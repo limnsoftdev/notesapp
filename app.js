@@ -292,7 +292,10 @@ function buildEntryCard(entry){
     card.querySelector('.entry-main').addEventListener('click', () => toggleSelect(entry.id));
   }else{
     card.querySelector('.speak').addEventListener('click', () => speak(entry.korean));
-    card.querySelector('.del').addEventListener('click', () => deleteEntry(entry.id));
+    card.querySelector('.del').addEventListener('click', () => {
+      card.classList.add('removing');
+      card.addEventListener('animationend', () => deleteEntry(entry.id), { once: true });
+    });
     card.querySelector('.edit').addEventListener('click', () => enterEditMode(card, entry));
   }
 
@@ -372,6 +375,7 @@ async function handleAdd(){
   if(!raw){ flashHint('type something first', true); return; }
 
   addBtn.disabled = true;
+  addBtn.classList.add('loading');
   flashHint('working on it…');
 
   let korean, romanized, meaning;
@@ -385,6 +389,7 @@ async function handleAdd(){
       flashHint('couldn\'t auto-translate — add the meaning below', true);
       openManualRow(korean, romanized, '');
       addBtn.disabled = false;
+      addBtn.classList.remove('loading');
       return;
     }
   }else{
@@ -394,6 +399,7 @@ async function handleAdd(){
       flashHint('couldn\'t auto-translate — fill in korean below', true);
       openManualRow('', '', meaning);
       addBtn.disabled = false;
+      addBtn.classList.remove('loading');
       return;
     }
     korean = koTranslated;
@@ -402,6 +408,7 @@ async function handleAdd(){
 
   commitEntry(korean, romanized, meaning);
   addBtn.disabled = false;
+  addBtn.classList.remove('loading');
 }
 
 function openManualRow(korean, rom, meaning){
