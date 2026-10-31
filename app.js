@@ -1174,7 +1174,6 @@ const wrongSub         = document.getElementById('wrongSub');
 const correctSub       = document.getElementById('correctSub');
 const endSessionBtn    = document.getElementById('endSessionBtn');
 const trainProgress    = document.getElementById('trainProgress');
-const trainDannoFig    = document.getElementById('trainDannoFig');
 const summaryList      = document.getElementById('summaryList');
 const trainAnswerForm  = document.getElementById('trainAnswerForm');
 const trainAnswerInput = document.getElementById('trainAnswerInput');
@@ -1303,9 +1302,8 @@ function showCard(){
     trainAnswerInput.placeholder = 'type it in korean';
   }
   const status = statusOf(entry);
-  // when you last saw it stays as a quiet fact on the card rather than danno saying it
+  // when you last saw it stays as a quiet fact on the card
   flashStrength.innerHTML = `<div class="strength" role="img" aria-label="${strengthLabel(entry)}">${strengthDots(entry)}</div><span class="status ${status.kind}">${status.text}</span><span class="last-seen">${lastSeenText(entry)}</span>`;
-  setTrainPose('stand');
   setTimeout(() => trainAnswerInput.focus(), 50);
 }
 
@@ -1331,7 +1329,6 @@ function revealCard(){
   const key = session.queue[session.index].id;
   wrongSub.textContent = (session.requeued[key] || 0) < 1 ? 'again in this session' : 'back to the start';
   correctSub.textContent = daysText(BOX_INTERVALS[Math.min(strengthOf(entry) + 1, MAX_BOX)], 'next');
-  dannoReact('lean', 'peek');
 
   trainAnswerForm.hidden = true;
   hintBtn.hidden = true;
@@ -1371,18 +1368,6 @@ trainAnswerForm.addEventListener('submit', (e) => {
 });
 hintBtn.addEventListener('click', revealCard);
 
-/* ---------- danno in training ---------- */
-// he watches the question, leans in for the answer, hops when you know it and curls up
-// when you don't. no talking. pose swaps happen mid-squash so they read as one movement
-function setTrainPose(pose){
-  trainDannoFig.querySelectorAll('img').forEach(img => img.classList.toggle('on', img.dataset.pose === pose));
-}
-function dannoReact(move, pose){
-  trainDannoFig.classList.remove('hop', 'sulk', 'lean');
-  void trainDannoFig.offsetWidth;
-  trainDannoFig.classList.add(move);
-  setTimeout(() => setTrainPose(pose), 110);
-}
 function lastSeenText(entry){
   if(!hasBeenReviewed(entry)) return 'first review';
   const last = entry.srs.dueAt - BOX_INTERVALS[entry.srs.box];
@@ -1392,10 +1377,7 @@ function lastSeenText(entry){
 }
 
 function playFeedback(rating){
-  if(rating === 'correct'){
-    dannoReact('hop', 'stand');
-  }else{
-    dannoReact('sulk', 'knees');
+  if(rating === 'wrong'){
     flashCard.classList.remove('shake');
     void flashCard.offsetWidth;
     flashCard.classList.add('shake');
@@ -1428,7 +1410,7 @@ ratingRow.addEventListener('click', (e) => {
     }
   }
 
-  // long enough to see danno react before the next card
+  // long enough to see the rating land before the next card
   setTimeout(() => {
     session.index++;
     showCard();

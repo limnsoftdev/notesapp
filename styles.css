@@ -547,7 +547,7 @@ button, input, select{ font-family: inherit; }
 }
 
 /* ===================== training ===================== */
-/* during a session the header, banner and tabs step aside: just the card and danno */
+/* during a session the header, banner and tabs step aside: just the card */
 .app.in-session .topbar,
 .app.in-session .fade-banner,
 .app.in-session .tabbar{ display: none !important; }
@@ -687,43 +687,6 @@ button, input, select{ font-family: inherit; }
 .wrong-btn{ background: var(--danger-bg); color: var(--danger-ink); box-shadow: 0 3px 0 var(--danger-edge); }
 .correct-btn{ background: var(--gold); color: var(--gold-ink); box-shadow: 0 3px 0 var(--gold-edge); }
 .rating-btn:active{ transform: translateY(3px); box-shadow: none; }
-
-/* danno keeps you company while you train, and reacts to how it goes */
-/* danno quietly keeps you company below the card: no talking, he just reacts.
-   the top padding leaves room for his hop */
-.train-danno{
-  margin-top: 10px; padding-top: 46px;
-  display:flex; flex-direction:column; align-items:center;
-  pointer-events: none;
-}
-.train-danno-fig{ position: relative; width: 108px; height: 180px; transform-origin: 50% 96%; }
-.train-danno-fig img{ position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
-.train-danno-fig img.on{ opacity: 1; }
-.train-danno-shadow{ width: 70px; height: 10px; margin-top: -8px; border-radius: 50%; background: rgba(3,20,60,.35); }
-.train-danno-fig.hop{ animation: dannoHop .75s var(--ease-out); }
-.train-danno-fig.sulk{ animation: dannoSulk .9s ease-in-out; }
-.train-danno-fig.lean{ animation: dannoLean .5s var(--ease-spring); }
-@keyframes dannoHop{
-  0%  { transform: translateY(0) scale(1, 1); }
-  14% { transform: translateY(0) scale(1.08, .86); }
-  42% { transform: translateY(-46px) scale(.94, 1.08); }
-  70% { transform: translateY(0) scale(1, 1); }
-  80% { transform: translateY(0) scale(1.07, .9); }
-  100%{ transform: translateY(0) scale(1, 1); }
-}
-@keyframes dannoSulk{
-  0%  { transform: scale(1, 1); }
-  15% { transform: scale(1.1, .82); }
-  35% { transform: scale(1, 1) rotate(0deg); }
-  55% { transform: rotate(-3deg); }
-  75% { transform: rotate(2deg); }
-  100%{ transform: rotate(0deg); }
-}
-@keyframes dannoLean{
-  0%  { transform: scale(1, 1); }
-  30% { transform: scale(1.05, .92); }
-  100%{ transform: scale(1, 1); }
-}
 
 /* ===================== session summary ===================== */
 .train-summary{
