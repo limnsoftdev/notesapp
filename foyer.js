@@ -195,6 +195,9 @@ function dannoSulk(){
 //   0.75  he wakes and hops to his feet                           (lands ≈1.45)
 //   1.85  wipe out of Danno into the log                          (≈0.9s)
 let waking = false;
+// true when danno was put back to sleep because you came back to the app (not a fresh load):
+// waking him then returns you to whatever you were doing instead of jumping to the log
+let resumedFromAway = false;
 const SYL_TILT = [-7, 4, -5];
 function wakeUp(){
   if(waking) return;
@@ -218,7 +221,9 @@ function wakeUp(){
     // a beat to see him standing under his word, then straight in
     .add(() => {
       waking = false;
-      closeFoyer(dannoWrap, () => switchTab('log'));
+      const resumed = resumedFromAway;
+      resumedFromAway = false;
+      closeFoyer(dannoWrap, () => { if(!resumed) switchTab('log'); });
     }, 1.85);
 }
 // coming back via the topbar logo: he's already awake, so just a quick entrance
@@ -322,6 +327,31 @@ dannoWrap.addEventListener('click', () => {
 });
 dannoWrap.addEventListener('keydown', (e) => {
   if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); dannoWrap.click(); }
+});
+
+/* ---------- every visit starts with danno ---------- */
+// phones usually resume the app from the background instead of reloading it, so a fresh
+// load alone would skip him. coming back after more than AWAY_MS puts him back to sleep;
+// a quick switch to another app and back (copying a word, say) doesn't interrupt you
+const AWAY_MS = 60 * 1000;
+let hiddenAt = null;
+function putDannoToSleep(){
+  gsap.killTweensOf(['#danno', '#dannoWrap', '#dannoShadow', '#foyerSpot', '.foyer-syl', '.foyer-inner', '.foyer-inner > *']);
+  gsap.set('#danno', { x: 0, y: 0, scaleX: 1, scaleY: 1, rotate: 0 });
+  gsap.set('#dannoWrap', { opacity: 1, y: 0 });
+  gsap.set('#dannoShadow', { scale: 1, opacity: 1 });
+  foyerEl.classList.remove('is-waking');
+  foyerEl.classList.add('is-asleep');
+  waking = false;
+  resumedFromAway = true;
+  if(!settingsOverlay.hidden) closeSettings();
+  openFoyer();
+}
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){ hiddenAt = Date.now(); return; }
+  const away = hiddenAt && Date.now() - hiddenAt >= AWAY_MS;
+  hiddenAt = null;
+  if(away && motionOk && foyerEl.hidden && !leaving) putDannoToSleep();
 });
 
 openFoyer();
