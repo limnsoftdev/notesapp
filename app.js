@@ -643,6 +643,31 @@ async function shareSelected(){
   }
 }
 
+/* ===================== refresh for updates ===================== */
+// an installed app can keep serving old files from the browser cache, so refetch the page
+// and its scripts past the cache, clear any cached copies, then reload. localStorage
+// (the words) is left alone
+const refreshAppBtn = document.getElementById('refreshAppBtn');
+
+refreshAppBtn.addEventListener('click', async () => {
+  refreshAppBtn.disabled = true;
+  refreshAppBtn.textContent = 'refreshing…';
+  try{
+    if('serviceWorker' in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if('caches' in window){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    const urls = [location.pathname, ...[...document.querySelectorAll('script[src], link[rel="stylesheet"]')]
+      .map(el => el.src || el.href).filter(u => u.startsWith(location.origin))];
+    await Promise.all(urls.map(u => fetch(u, { cache: 'reload' }).catch(() => {})));
+  }catch{}
+  location.reload();
+});
+
 /* ===================== full backup export / import ===================== */
 const exportBackupBtn = document.getElementById('exportBackupBtn');
 const importBackupBtn = document.getElementById('importBackupBtn');
