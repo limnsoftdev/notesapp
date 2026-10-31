@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0B0D12">
+<meta name="theme-color" content="#0A47B8">
 <title>단어장 · Word Log</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="iconmob.jpg">
@@ -12,93 +12,86 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=20261031e">
 </head>
 <body>
 
-<picture>
-  <source media="(min-width: 900px)" srcset="blob-scene-haikei-pc.svg">
-  <img class="bg-decor bg-decor-blob" src="blob-scene-haikei.svg" alt="" aria-hidden="true">
-</picture>
-<picture>
-  <source media="(min-width: 900px)" srcset="layered-waves-haikei-pc.svg">
-  <img class="bg-decor bg-decor-wave" src="layered-waves-haikei.svg" alt="" aria-hidden="true">
-</picture>
-<div class="bg-grain" aria-hidden="true"></div>
-<img class="bg-mascot" src="daneo3.png" alt="" aria-hidden="true">
+<svg class="app-hills" aria-hidden="true" viewBox="0 0 390 220" preserveAspectRatio="none">
+  <path class="h1" d="M0 90 C 70 60, 140 120, 210 92 C 280 64, 330 100, 390 80 V 220 H 0 Z"/>
+  <path class="h2" d="M0 150 C 80 126, 160 176, 240 150 C 310 128, 350 160, 390 146 V 220 H 0 Z"/>
+</svg>
+<img class="bg-mascot" src="danno/knees-tight.png" width="448" height="762" alt="" aria-hidden="true">
 
-<div class="app">
+<div class="app" id="app">
 
   <header class="topbar">
-    <div class="brand">
+    <button class="brand-home" id="brandHome" type="button" aria-label="back to the welcome screen">
       <img class="brand-logo" src="logo2.png" alt="단어장 word log">
-    </div>
+    </button>
     <div class="topbar-actions">
-      <button class="icon-btn settings-toggle" id="settingsBtn" title="settings" aria-label="settings">
-        <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M19.4 13a7.6 7.6 0 000-2l2-1.5-2-3.4-2.3.9a7.7 7.7 0 00-1.7-1L15 3.6h-6l-.4 2.4a7.7 7.7 0 00-1.7 1l-2.3-.9-2 3.4L4.6 11a7.6 7.6 0 000 2l-2 1.5 2 3.4 2.3-.9a7.7 7.7 0 001.7 1L9 20.4h6l.4-2.4a7.7 7.7 0 001.7-1l2.3.9 2-3.4-2-1.5z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>
+      <div class="streak-btn" id="streakBtn" role="img" aria-label="streak">
+        <svg class="streak-ring" viewBox="0 0 36 36" width="36" height="36" aria-hidden="true">
+          <circle class="ring-track" cx="18" cy="18" r="15"/>
+          <circle class="ring-fill" id="dailyRing" cx="18" cy="18" r="15" stroke-dasharray="0 94.25" transform="rotate(-90 18 18)"/>
+          <path class="flame-outer" d="M18 9.5c0 0 5 6.4 5 10a5 5 0 1 1-10 0c0-3.6 5-10 5-10z"/>
+          <path class="flame-inner" d="M18 16c0 0 2.4 3 2.4 4.7a2.4 2.4 0 1 1-4.8 0c0-1.7 2.4-4.7 2.4-4.7z"/>
+        </svg>
+        <span class="streak-count" id="streakCount">0</span>
+      </div>
+      <button class="icon-btn settings-toggle" id="settingsBtn" type="button" aria-label="settings">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.5-2-3.4-2.3.9a7.7 7.7 0 0 0-1.7-1L15 3.6H9l-.4 2.4a7.7 7.7 0 0 0-1.7 1l-2.3-.9-2 3.4L4.6 11a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.4 2.3-.9a7.7 7.7 0 0 0 1.7 1l.4 2.4h6l.4-2.4a7.7 7.7 0 0 0 1.7-1l2.3.9 2-3.4z"/></svg>
       </button>
-      <button class="icon-btn share-toggle" id="shareToggleBtn" title="select & share" aria-label="select and share">
-        <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="18" cy="5" r="3" stroke="currentColor" stroke-width="1.8" fill="none"/><circle cx="6" cy="12" r="3" stroke="currentColor" stroke-width="1.8" fill="none"/><circle cx="18" cy="19" r="3" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M8.6 10.6l6.8-4.2M8.6 13.4l6.8 4.2" stroke="currentColor" stroke-width="1.8"/></svg>
-      </button>
-      <div class="count-badge" id="countBadge">0</div>
     </div>
   </header>
 
-  <div class="streak-row">
-    <div class="streak-badge" id="streakBadge">
-      <svg class="streak-flame" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
-        <path d="M12 2C12 2 18 10.5 18 15A6 6 0 1 1 6 15C6 10.5 12 2 12 2Z" fill="currentColor"/>
-        <path d="M12 10C12 10 15 14.5 15 17A3 3 0 1 1 9 17C9 14.5 12 10 12 10Z" fill="var(--surface)"/>
-      </svg>
-      <span class="streak-count" id="streakCount">0</span>
-      <span class="streak-label">day streak</span>
+  <section class="fade-banner" id="fadeBanner" hidden>
+    <img class="fade-danno" src="danno/knees-tight.png" width="448" height="762" alt="">
+    <div class="fade-text">
+      <p class="fade-title" id="fadeTitle"></p>
+      <p class="fade-sub" id="fadeSub"></p>
     </div>
-  </div>
+    <button class="btn-gold" id="fadeReviewBtn" type="button"></button>
+  </section>
 
-  <nav class="tabbar">
-    <button class="tab active" id="tabLogBtn" data-tab="log">Log</button>
-    <button class="tab" id="tabTrainBtn" data-tab="train">
-      Train
+  <nav class="tabbar" aria-label="sections">
+    <button class="tab active" id="tabLogBtn" data-tab="log" type="button">log</button>
+    <button class="tab" id="tabTrainBtn" data-tab="train" type="button">
+      train
       <span class="due-dot" id="dueDot" hidden></span>
     </button>
   </nav>
 
-  <div class="daily-progress">
-    <div class="daily-progress-top">
-      <span class="daily-progress-label">today's practice</span>
-      <span id="dailyProgressText">0 / 10</span>
-    </div>
-    <div class="daily-progress-bar"><div class="daily-progress-fill" id="dailyProgressFill"></div></div>
-  </div>
-
   <section id="logView">
     <section class="add-panel">
       <div class="field-row">
-        <input id="phraseInput" type="text" placeholder="type a phrase — korean or english" autocomplete="off" spellcheck="false">
-        <button id="addBtn" class="btn-primary" aria-label="add phrase">
-          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        <label class="sr-only" for="phraseInput">add a word</label>
+        <input id="phraseInput" type="text" placeholder="add a word — 한국어 or english" autocomplete="off" spellcheck="false">
+        <button id="addBtn" class="btn-primary" type="button" aria-label="add word">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
         </button>
       </div>
       <div class="field-row secondary" id="manualRow" hidden>
-        <input id="meaningInput" type="text" placeholder="english meaning">
-        <input id="koreanInput" type="text" placeholder="한국어" class="ko">
-        <input id="romInput" type="text" placeholder="romanization">
+        <input id="meaningInput" type="text" placeholder="english meaning" aria-label="english meaning">
+        <input id="koreanInput" type="text" placeholder="한국어" class="ko" aria-label="korean">
+        <input id="romInput" type="text" placeholder="romanization" aria-label="romanization">
       </div>
-      <div class="hint" id="statusHint">enter a word or phrase and hit add</div>
+      <div class="hint" id="statusHint" aria-live="polite"></div>
     </section>
 
-    <nav class="chips" id="categoryChips"></nav>
+    <nav class="chips" id="categoryChips" aria-label="sort and filter"></nav>
 
     <div class="search-row">
-      <svg viewBox="0 0 24 24" width="16" height="16" class="search-icon"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" width="16" height="16" class="search-icon" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <label class="sr-only" for="searchInput">search your log</label>
       <input id="searchInput" type="text" placeholder="search your log">
     </div>
 
     <main class="log" id="logList">
       <div class="empty-state" id="emptyState">
+        <img src="danno/knees-tight.png" width="448" height="762" alt="">
         <p>nothing logged yet</p>
-        <span>whatever you learn goes here</span>
+        <span>add a word you heard today</span>
       </div>
     </main>
   </section>
@@ -106,91 +99,114 @@
   <section id="trainView" hidden>
 
     <div class="train-setup" id="trainSetup">
-      <p class="train-lead" id="trainLead">ready to drill your log</p>
+      <p class="train-lead" id="trainLead">ready to train</p>
       <p class="train-sub" id="trainSub"></p>
 
       <div class="setting-block">
         <span class="setting-label">direction</span>
         <div class="segmented" id="dirSegment">
-          <button data-val="mixed" class="active">mixed</button>
-          <button data-val="ko-en">한국어→en</button>
-          <button data-val="en-ko">en→한국어</button>
+          <button data-val="mixed" class="active" type="button">mixed</button>
+          <button data-val="ko-en" type="button">한국어→en</button>
+          <button data-val="en-ko" type="button">en→한국어</button>
         </div>
       </div>
 
       <div class="setting-block">
         <span class="setting-label">session size</span>
         <div class="segmented" id="sizeSegment">
-          <button data-val="10" class="active">10</button>
-          <button data-val="20">20</button>
-          <button data-val="all">all</button>
+          <button data-val="10" class="active" type="button">10</button>
+          <button data-val="20" type="button">20</button>
+          <button data-val="all" type="button">all</button>
         </div>
       </div>
 
-      <button class="btn-start-train" id="startTrainBtn">start training</button>
+      <div class="setting-block">
+        <button class="toggle-chip" id="shuffleBtn" type="button" aria-pressed="false">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 6h4l9 12h3M4 18h4l3-4M17 6h3M15 4l5 2-5 2M15 20l5-2-5-2" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          shuffle order
+        </button>
+      </div>
+
+      <button class="btn-start-train" id="startTrainBtn" type="button">start training</button>
     </div>
 
     <div class="train-session" id="trainSession" hidden>
       <div class="train-session-head">
-        <div class="train-progress-row">
-          <div class="train-progress-bar"><div class="train-progress-fill" id="trainProgressFill"></div></div>
-          <span class="train-progress-text" id="trainProgressText">1 / 10</span>
-        </div>
-        <button class="shuffle-btn" id="shuffleBtn" title="shuffle order" aria-label="shuffle order">
-          <svg viewBox="0 0 24 24" width="14" height="14"><path d="M4 6h4l9 12h3M4 18h4l3-4M17 6h3M15 4l5 2-5 2M15 20l5-2-5-2" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          shuffle
+        <button class="icon-btn end-session" id="endSessionBtn" type="button" aria-label="end session">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </button>
+        <div class="train-progress-bar" id="trainProgress" role="progressbar" aria-label="session progress" aria-valuemin="0"><div class="train-progress-fill" id="trainProgressFill"></div></div>
+        <span class="train-progress-text" id="trainProgressText">1/10</span>
       </div>
 
       <div class="flash-card" id="flashCard">
-        <button class="hint-btn" id="hintBtn" type="button" title="reveal the answer" aria-label="reveal the answer">?</button>
-        <span class="flash-tag" id="flashTag">한국어 → english</span>
-        <p class="flash-prompt" id="flashPrompt">안녕하세요</p>
+        <div class="flash-card-top">
+          <span class="flash-tag" id="flashTag">한국어 → english</span>
+          <button class="hint-btn" id="hintBtn" type="button" title="show the answer" aria-label="show the answer">?</button>
+        </div>
+        <p class="flash-prompt" id="flashPrompt"></p>
         <p class="flash-sub" id="flashSub"></p>
+        <div class="flash-strength" id="flashStrength"></div>
 
         <div class="flash-reveal" id="flashReveal" hidden>
           <div class="flash-divider"></div>
+          <p class="reveal-label" id="revealLabel">meaning</p>
           <p class="reveal-answer" id="revealAnswer"></p>
           <p class="reveal-note" id="revealNote"></p>
           <div class="answer-media">
+            <figure class="answer-example" id="answerExample" hidden>
+              <blockquote class="example-ko" id="exampleKo" lang="ko"></blockquote>
+              <figcaption class="example-en" id="exampleEn"></figcaption>
+            </figure>
             <div class="answer-gif" id="answerGif" hidden>
               <img id="answerGifImg" alt="">
             </div>
-            <div class="answer-example" id="answerExample" hidden>
-              <p class="example-ko" id="exampleKo"></p>
-              <p class="example-en" id="exampleEn"></p>
-            </div>
           </div>
         </div>
-
-        <div class="feedback-burst" id="feedbackBurst" hidden></div>
       </div>
 
       <form class="train-answer-row" id="trainAnswerForm">
+        <label class="sr-only" for="trainAnswerInput">your answer</label>
         <input type="text" id="trainAnswerInput" placeholder="type your answer" autocomplete="off" spellcheck="false">
-        <button type="submit" class="btn-primary" aria-label="submit answer">
-          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button type="submit" class="btn-primary" aria-label="check answer">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </form>
 
       <div class="rating-row" id="ratingRow" hidden>
         <button class="rating-btn wrong-btn" data-rating="wrong" type="button">
-          <svg viewBox="0 0 24 24" width="19" height="19"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
-          <span>not quite</span>
+          <span class="rating-main">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>
+            not quite
+          </span>
+          <span class="rating-sub" id="wrongSub"></span>
         </button>
         <button class="rating-btn correct-btn" data-rating="correct" type="button">
-          <svg viewBox="0 0 24 24" width="19" height="19"><path d="M4 12.5l5.5 5.5L20 6.5" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span>got it</span>
+          <span class="rating-main">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 12.5l5.5 5.5L20 6.5" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            got it
+          </span>
+          <span class="rating-sub" id="correctSub"></span>
         </button>
+      </div>
+
+      <div class="train-danno" aria-hidden="true">
+        <div class="train-danno-fig" id="trainDannoFig">
+          <img data-pose="stand" class="on" src="danno/stand.png" alt="">
+          <img data-pose="peek" src="danno/peek.png" alt="">
+          <img data-pose="knees" src="danno/knees.png" alt="">
+        </div>
+        <div class="train-danno-shadow"></div>
       </div>
     </div>
 
     <div class="train-summary" id="trainSummary" hidden>
-      <p class="summary-headline" id="summaryHeadline"></p>
+      <h2 class="summary-headline" id="summaryHeadline"></h2>
       <p class="summary-sub" id="summarySub"></p>
+      <ul class="summary-list" id="summaryList" aria-label="what changed"></ul>
       <div class="summary-actions">
-        <button class="setting-btn" id="backToLogBtn">back to log</button>
-        <button class="btn-start-train" id="trainAgainBtn">train again</button>
+        <button class="summary-back" id="backToLogBtn" type="button">back to log</button>
+        <button class="summary-again" id="trainAgainBtn" type="button">train again</button>
       </div>
     </div>
 
@@ -199,88 +215,147 @@
 </div>
 
 <div class="select-bar" id="selectBar" hidden>
-  <button id="selectAllBtn" class="select-bar-link">select all</button>
+  <button id="selectAllBtn" class="select-bar-link" type="button">select all</button>
   <span class="select-count" id="selectCount">0 selected</span>
   <div class="select-bar-actions">
-    <button id="cancelSelectBtn" class="select-bar-cancel">cancel</button>
-    <button id="shareSelectedBtn" class="select-bar-share" disabled>share</button>
+    <button id="cancelSelectBtn" class="select-bar-cancel" type="button">cancel</button>
+    <button id="shareSelectedBtn" class="select-bar-share" type="button" disabled>share</button>
   </div>
 </div>
 
 <div class="modal-overlay" id="settingsOverlay" hidden>
-  <div class="modal-sheet">
+  <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="sheet-grip" aria-hidden="true"></div>
     <div class="modal-header">
-      <h2>settings</h2>
-      <button class="icon-btn" id="closeSettingsBtn" aria-label="close">
-        <svg viewBox="0 0 24 24" width="15" height="15"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <h2 id="settingsTitle">settings</h2>
+      <button class="icon-btn" id="closeSettingsBtn" type="button" aria-label="close settings">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
       </button>
     </div>
 
     <div class="setting-block">
       <span class="setting-label">appearance</span>
-      <div class="segmented" id="themeSegment" data-value="auto">
-        <button data-val="light">light</button>
-        <button data-val="dark">dark</button>
-        <button data-val="auto">auto</button>
+      <div class="segmented" id="themeSegment">
+        <button data-val="light" type="button">light</button>
+        <button data-val="dark" type="button">dark</button>
+        <button data-val="auto" type="button">auto</button>
       </div>
+    </div>
+
+    <div class="setting-block">
+      <span class="setting-label">daily goal</span>
+      <div class="segmented" id="goalSegment">
+        <button data-val="5" type="button">5</button>
+        <button data-val="10" type="button">10</button>
+        <button data-val="20" type="button">20</button>
+        <button data-val="30" type="button">30</button>
+      </div>
+      <p class="setting-note">reviews a day. the ring around your streak fills as you go</p>
     </div>
 
     <div class="setting-block">
       <span class="setting-label">sort log by</span>
-      <div class="segmented" id="sortSegment" data-value="newest">
-        <button data-val="newest">newest</button>
-        <button data-val="oldest">oldest</button>
-        <button data-val="az">가나다</button>
-        <button data-val="category">category</button>
+      <div class="segmented" id="sortSegment">
+        <button data-val="fading" type="button">fading</button>
+        <button data-val="newest" type="button">newest</button>
+        <button data-val="az" type="button">가나다</button>
+        <button data-val="category" type="button">category</button>
       </div>
     </div>
 
     <div class="setting-block">
-      <span class="setting-label">daily goal (cards)</span>
-      <div class="segmented" id="goalSegment" data-value="10">
-        <button data-val="5">5</button>
-        <button data-val="10" class="active">10</button>
-        <button data-val="20">20</button>
-        <button data-val="30">30</button>
+      <span class="setting-label">on answers</span>
+      <div class="setting-row">
+        <div class="setting-row-text">
+          <p class="setting-row-title">example sentences</p>
+          <p class="setting-note" id="krdictKeyStatus"></p>
+          <input type="text" id="krdictKeyInput" class="key-input" placeholder="KRDict key (optional backup source)" aria-label="KRDict API key" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off">
+        </div>
+        <button class="switch" id="examplesSwitch" type="button" role="switch" aria-checked="true" aria-label="example sentences"><span></span></button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-row-text">
+          <p class="setting-row-title">word gifs</p>
+          <p class="setting-note" id="gifKeyStatus"></p>
+          <input type="text" id="gifKeyInput" class="key-input" placeholder="paste a free Klipy key" aria-label="Klipy API key" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off">
+        </div>
       </div>
     </div>
 
     <div class="setting-block">
-      <span class="setting-label">word gifs</span>
-      <div class="gif-key-row">
-        <input type="text" id="gifKeyInput" placeholder="paste a free Klipy API key" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off">
-      </div>
-      <p class="setting-note" id="gifKeyStatus"></p>
-      <p class="setting-note">shows a gif of the word when you reveal an answer while training. get a free key at <a href="https://klipy.com/developers" target="_blank" rel="noopener">klipy.com/developers</a> (tenor's api was shut down by google in 2026, klipy is its replacement). stored only on this device.</p>
-    </div>
-
-    <div class="setting-block">
-      <span class="setting-label">example sentences</span>
-      <div class="gif-key-row">
-        <input type="text" id="krdictKeyInput" placeholder="paste a free KRDict API key (optional)" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off">
-      </div>
-      <p class="setting-note" id="krdictKeyStatus"></p>
-      <p class="setting-note">shows an example sentence next to the gif when you reveal an answer. works out of the box using Tatoeba (no key needed) — add a free KRDict key at <a href="https://krdict.korean.go.kr/eng/openApi/openApiRegister" target="_blank" rel="noopener">krdict.korean.go.kr</a> as a backup source for words Tatoeba doesn't have. stored only on this device.</p>
-    </div>
-
-    <div class="setting-block">
-      <span class="setting-label">your data</span>
+      <span class="setting-label">your words</span>
       <div class="setting-row-buttons">
-        <button class="setting-btn" id="exportBackupBtn">export backup</button>
-        <button class="setting-btn" id="importBackupBtn">restore backup</button>
+        <button class="setting-btn" id="exportBackupBtn" type="button">export backup</button>
+        <button class="setting-btn" id="importBackupBtn" type="button">restore backup</button>
       </div>
+      <button class="setting-btn wide" id="shareToggleBtn" type="button">select &amp; share words</button>
       <input type="file" id="importFileInput" accept="application/json" hidden>
     </div>
 
-    <div class="setting-block danger-block">
-      <span class="setting-label">danger zone</span>
-      <button class="setting-btn danger-btn" id="clearAllBtn">clear all entries</button>
-    </div>
+    <button class="danger-link" id="clearAllBtn" type="button">delete all words</button>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<script src="app.js"></script>
+<section class="foyer is-asleep" id="foyer" aria-label="welcome">
+  <div class="foyer-bg" aria-hidden="true">
+    <div class="foyer-mesh"><i></i><i></i><i></i><i></i></div>
+    <svg class="foyer-waves" viewBox="0 0 900 300" preserveAspectRatio="none">
+      <path class="w1" d="M0 118 C 150 78, 300 158, 450 118 C 600 78, 750 148, 900 108 V 300 H 0 Z"/>
+      <path class="w2" d="M0 172 C 160 140, 300 210, 470 176 C 630 142, 760 202, 900 166 V 300 H 0 Z"/>
+      <path class="w3" d="M0 228 C 170 202, 320 256, 480 230 C 640 204, 780 246, 900 222 V 300 H 0 Z"/>
+    </svg>
+    <div class="foyer-grain"></div>
+  </div>
+  <div class="foyer-spot" id="foyerSpot"></div>
+  <div class="foyer-inner">
+    <div class="foyer-logo" id="foyerLogo" aria-label="단어장">
+      <div class="foyer-syl"></div><div class="foyer-syl"></div><div class="foyer-syl"></div>
+    </div>
+
+    <div class="danno-wrap" id="dannoWrap" role="button" tabindex="0" aria-label="danno, tap to wake him up">
+      <div class="danno-shadow" id="dannoShadow"></div>
+      <div class="danno" id="danno">
+        <img class="danno-pose" data-pose="knees" src="danno/knees.png" alt="">
+        <img class="danno-pose" data-pose="stand" src="danno/stand.png" alt="">
+        <img class="danno-pose" data-pose="peek"  src="danno/peek.png" alt="">
+      </div>
+      <div class="danno-zz" id="dannoZz">z</div>
+    </div>
+
+    <div class="foyer-greet" id="foyerGreet">
+      <h1 id="foyerHello">좋은 아침!</h1>
+      <p id="foyerSub"></p>
+    </div>
+
+    <button class="recall" id="recall" type="button" hidden>
+      <span class="recall-tag">remember this one?</span>
+      <span class="recall-ko" id="recallKo"></span>
+      <span class="recall-answer" id="recallAnswer" hidden>
+        <span class="recall-rom" id="recallRom"></span>
+        <span class="recall-meaning" id="recallMeaning"></span>
+      </span>
+      <span class="recall-hint" id="recallHint">tap to check</span>
+    </button>
+    <div class="recall-rate" id="recallRate" hidden>
+      <button type="button" data-rating="wrong">forgot</button>
+      <button type="button" data-rating="correct">knew it</button>
+    </div>
+
+    <div class="foyer-actions" id="foyerActions">
+      <button class="foyer-btn foyer-primary" id="foyerPrimary" type="button"></button>
+      <button class="foyer-btn foyer-secondary" id="foyerSecondary" type="button"></button>
+    </div>
+    <p class="foyer-stats" id="foyerStats"></p>
+  </div>
+</section>
+
+<div class="foyer-wipe foyer-wipe-gold" id="wipeGold" hidden></div>
+<div class="foyer-wipe foyer-wipe-paper" id="wipePaper" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="app.js?v=20261031e"></script>
+<script src="foyer.js?v=20261031e"></script>
 </body>
 </html>

@@ -26,7 +26,7 @@ function migrateSrs(){
 
 /* ===================== settings ===================== */
 const SETTINGS_KEY = 'koWordLog.settings.v1';
-const DEFAULT_SETTINGS = {theme:'auto', sort:'newest', dailyGoal:10, gifApiKey:'', krdictApiKey:''};
+const DEFAULT_SETTINGS = {theme:'auto', sort:'fading', dailyGoal:10, gifApiKey:'', krdictApiKey:'', examples:true};
 function loadSettings(){
   try{
     const raw = localStorage.getItem(SETTINGS_KEY);
@@ -176,7 +176,6 @@ const chipsBar       = document.getElementById('categoryChips');
 const searchInput    = document.getElementById('searchInput');
 const logList        = document.getElementById('logList');
 const emptyState     = document.getElementById('emptyState');
-const countBadge     = document.getElementById('countBadge');
 const toastEl        = document.getElementById('toast');
 
 let activeCategory = 'all';
@@ -201,14 +200,34 @@ function showToast(msg, duration){
 }
 
 /* ===================== chips ===================== */
+// the first chip cycles the sort order (fading first is the point of the app); the rest filter
+const SORT_CYCLE  = ['fading', 'newest', 'az'];
+const SORT_LABELS = { fading: 'fading first', newest: 'newest', oldest: 'oldest', az: '가나다', category: 'by category' };
 function renderChips(){
   const counts = {};
   entries.forEach(e => counts[e.category] = (counts[e.category]||0) + 1);
   const cats = ['all', ...CATEGORIES.filter(c => counts[c])];
   chipsBar.innerHTML = '';
+
+  const sortChip = document.createElement('button');
+  sortChip.type = 'button';
+  sortChip.className = 'chip active';
+  sortChip.setAttribute('aria-label', `sorted by ${SORT_LABELS[settings.sort] || settings.sort}, tap to change`);
+  sortChip.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>${escapeHtml(SORT_LABELS[settings.sort] || settings.sort)}`;
+  sortChip.addEventListener('click', () => {
+    const i = SORT_CYCLE.indexOf(settings.sort);
+    settings.sort = SORT_CYCLE[(i + 1) % SORT_CYCLE.length];
+    saveSettings();
+    renderChips();
+    renderLog();
+  });
+  chipsBar.appendChild(sortChip);
+
   cats.forEach(cat => {
-    const chip = document.createElement('div');
-    chip.className = 'chip' + (cat === activeCategory ? ' active' : '');
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip' + (cat === activeCategory && cat !== 'all' ? ' active' : '');
+    chip.setAttribute('aria-pressed', String(cat === activeCategory));
     chip.textContent = cat === 'all' ? `all · ${entries.length}` : `${cat} · ${counts[cat]}`;
     chip.addEventListener('click', () => { activeCategory = cat; renderChips(); renderLog(); });
     chipsBar.appendChild(chip);
@@ -224,6 +243,7 @@ function renderLog(){
     return matchesCat && matchesSearch;
   }).sort((a,b) => {
     switch(settings.sort){
+      case 'fading':   return fadingOrder(a, b);
       case 'oldest':   return a.createdAt - b.createdAt;
       case 'az':       return a.korean.localeCompare(b.korean, 'ko');
       case 'category': return a.category.localeCompare(b.category) || (b.createdAt - a.createdAt);
@@ -233,7 +253,6 @@ function renderLog(){
   });
 
   logList.innerHTML = '';
-  countBadge.textContent = entries.length;
   logList.classList.toggle('has-select-bar', selectMode);
 
   if(entries.length === 0){
@@ -251,56 +270,127 @@ function renderLog(){
   filtered.forEach(entry => logList.appendChild(buildEntryCard(entry)));
 }
 
+/* ===================== memory strength ===================== */
+// the box an entry sits in (0–5) is how well you know it; the cards, banner and training
+// all show it so the log reads as "what am I about to forget", not just a list
+const DAY_MS = 86400000;
+function strengthOf(entry){ return entry.srs ? entry.srs.box : 0; }
+function hasBeenReviewed(entry){ return !!entry.srs && (entry.srs.correct + entry.srs.wrong) > 0; }
+function isDue(entry){ return !!entry.srs && entry.srs.dueAt <= Date.now(); }
+// due words first (weakest, then most overdue), then everything else by when it comes back
+function fadingOrder(a, b){
+  const da = isDue(a), db = isDue(b);
+  if(da !== db) return da ? -1 : 1;
+  if(da){
+    const ra = hasBeenReviewed(a), rb = hasBeenReviewed(b);
+    if(ra !== rb) return ra ? -1 : 1;
+    return (strengthOf(a) - strengthOf(b)) || (a.srs.dueAt - b.srs.dueAt);
+  }
+  return a.srs.dueAt - b.srs.dueAt;
+}
+function daysText(ms, prefix){
+  const days = Math.max(1, Math.round(ms / DAY_MS));
+  return days === 1 ? `${prefix} tomorrow` : `${prefix} in ${days} days`;
+}
+// { text, kind } for the little status next to the dots
+function statusOf(entry){
+  if(!hasBeenReviewed(entry)) return { text: 'new', kind: 'new' };
+  if(isDue(entry)) return { text: 'fading', kind: 'fading' };
+  return { text: daysText(entry.srs.dueAt - Date.now(), 'back'), kind: 'later' };
+}
+function strengthDots(entry){
+  const n = strengthOf(entry);
+  return Array.from({ length: MAX_BOX }, (_, i) => `<i${i < n ? ' class="on"' : ''}></i>`).join('');
+}
+function strengthLabel(entry){ return `memory strength ${strengthOf(entry)} of ${MAX_BOX}`; }
+
 function buildEntryCard(entry){
-  const card = document.createElement('div');
+  const card = document.createElement('article');
   card.className = 'entry' + (selectMode ? ' select-mode' : '');
   card.dataset.id = entry.id;
 
   const checkedClass = selectedIds.has(entry.id) ? ' checked' : '';
   const checkboxHtml = selectMode ? `
-      <div class="entry-check${checkedClass}" data-check>
-        <svg viewBox="0 0 24 24" width="12" height="12"><path d="M4 12l5 5L20 6" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="entry-check${checkedClass}" data-check role="checkbox" aria-checked="${selectedIds.has(entry.id)}" tabindex="0" aria-label="select ${escapeHtml(entry.korean)}">
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 12l5 5L20 6" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>` : '';
+  const status = statusOf(entry);
 
   card.innerHTML = `
     <div class="entry-top">
       ${checkboxHtml}
       <div class="entry-main">
-        <p class="ko-text">${escapeHtml(entry.korean)}</p>
+        <p class="ko-text" lang="ko">${escapeHtml(entry.korean)}</p>
         <p class="rom-text">${escapeHtml(entry.romanized)}</p>
         <p class="meaning-text">${escapeHtml(entry.meaning)}</p>
       </div>
-      <div class="entry-actions">
-        <button class="icon-btn speak" title="pronounce" aria-label="pronounce">
-          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M17 8a5 5 0 010 8" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
-        </button>
-        <button class="icon-btn edit" title="edit" aria-label="edit">
-          <svg viewBox="0 0 24 24" width="15" height="15"><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/></svg>
-        </button>
-        <button class="icon-btn del" title="delete" aria-label="delete">
-          <svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13h8l1-13" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </div>
+      ${selectMode ? '' : `<button class="listen-btn" type="button" aria-label="listen to ${escapeHtml(entry.korean)}">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+      </button>`}
     </div>
-    <div class="entry-footer">
-      <span class="cat-tag">${escapeHtml(entry.category)}</span>
+    <div class="entry-foot">
+      <div class="strength" role="img" aria-label="${strengthLabel(entry)}">${strengthDots(entry)}</div>
+      <span class="status ${status.kind}">${status.text}</span>
+      <span class="cat-text">${escapeHtml(entry.category)}</span>
+      ${selectMode ? '' : `<button class="more-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="more actions for ${escapeHtml(entry.korean)}">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+      </button>`}
     </div>
   `;
 
   if(selectMode){
-    card.querySelector('[data-check]').addEventListener('click', () => toggleSelect(entry.id));
-    card.querySelector('.entry-main').addEventListener('click', () => toggleSelect(entry.id));
+    const toggle = () => toggleSelect(entry.id);
+    card.querySelector('[data-check]').addEventListener('click', toggle);
+    card.querySelector('[data-check]').addEventListener('keydown', (e) => { if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); toggle(); } });
+    card.querySelector('.entry-main').addEventListener('click', toggle);
   }else{
-    card.querySelector('.speak').addEventListener('click', () => speak(entry.korean));
-    card.querySelector('.del').addEventListener('click', () => {
-      card.classList.add('removing');
-      card.addEventListener('animationend', () => deleteEntry(entry.id), { once: true });
+    card.querySelector('.listen-btn').addEventListener('click', () => speak(entry.korean));
+    card.querySelector('.more-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleEntryMenu(card, entry);
     });
-    card.querySelector('.edit').addEventListener('click', () => enterEditMode(card, entry));
   }
 
   return card;
 }
+
+// one small menu at a time; closes on outside tap or Escape
+let openMenu = null;
+function closeEntryMenu(){
+  if(!openMenu) return;
+  openMenu.menu.remove();
+  openMenu.btn.setAttribute('aria-expanded', 'false');
+  openMenu = null;
+}
+function toggleEntryMenu(card, entry){
+  const btn = card.querySelector('.more-btn');
+  if(openMenu && openMenu.card === card){ closeEntryMenu(); return; }
+  closeEntryMenu();
+  const menu = document.createElement('div');
+  menu.className = 'entry-menu';
+  menu.setAttribute('role', 'menu');
+  menu.innerHTML = `
+    <button type="button" role="menuitem" class="menu-edit">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/></svg>
+      edit
+    </button>
+    <button type="button" role="menuitem" class="menu-del">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13h8l1-13" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      delete
+    </button>`;
+  menu.querySelector('.menu-edit').addEventListener('click', () => { closeEntryMenu(); enterEditMode(card, entry); });
+  menu.querySelector('.menu-del').addEventListener('click', () => {
+    closeEntryMenu();
+    card.classList.add('removing');
+    card.addEventListener('animationend', () => deleteEntry(entry.id), { once: true });
+  });
+  card.appendChild(menu);
+  btn.setAttribute('aria-expanded', 'true');
+  openMenu = { card, menu, btn };
+  menu.querySelector('button').focus();
+}
+document.addEventListener('click', (e) => { if(openMenu && !openMenu.menu.contains(e.target)) closeEntryMenu(); });
+document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && openMenu){ const b = openMenu.btn; closeEntryMenu(); b.focus(); } });
 
 function escapeHtml(str){
   const div = document.createElement('div');
@@ -313,13 +403,13 @@ function enterEditMode(card, entry){
   card.classList.add('editing');
   const catOptions = CATEGORIES.map(c => `<option value="${c}" ${c===entry.category?'selected':''}>${c}</option>`).join('');
   card.innerHTML = `
-    <input type="text" class="ko" value="${escapeHtml(entry.korean)}" data-field="korean" placeholder="한국어">
-    <input type="text" value="${escapeHtml(entry.romanized)}" data-field="romanized" placeholder="romanization">
-    <input type="text" value="${escapeHtml(entry.meaning)}" data-field="meaning" placeholder="meaning">
-    <select class="cat-select" data-field="category">${catOptions}</select>
+    <input type="text" class="ko" lang="ko" value="${escapeHtml(entry.korean)}" data-field="korean" placeholder="한국어" aria-label="korean">
+    <input type="text" value="${escapeHtml(entry.romanized)}" data-field="romanized" placeholder="romanization" aria-label="romanization">
+    <input type="text" value="${escapeHtml(entry.meaning)}" data-field="meaning" placeholder="meaning" aria-label="meaning">
+    <select class="cat-select" data-field="category" aria-label="category">${catOptions}</select>
     <div class="edit-actions">
-      <button class="cancel-btn">cancel</button>
-      <button class="save-btn">save</button>
+      <button class="cancel-btn" type="button">cancel</button>
+      <button class="save-btn" type="button">save</button>
     </div>
   `;
   card.querySelector('.cancel-btn').addEventListener('click', () => renderLog());
@@ -496,6 +586,8 @@ function exitSelectMode(){
 
 shareToggleBtn.addEventListener('click', () => {
   if(entries.length === 0){ showToast('nothing to share yet'); return; }
+  closeSettings();
+  switchTab('log');
   selectMode ? exitSelectMode() : enterSelectMode();
 });
 
@@ -626,11 +718,12 @@ const gifKeyInput      = document.getElementById('gifKeyInput');
 const gifKeyStatus     = document.getElementById('gifKeyStatus');
 const krdictKeyInput   = document.getElementById('krdictKeyInput');
 const krdictKeyStatus  = document.getElementById('krdictKeyStatus');
+const examplesSwitch   = document.getElementById('examplesSwitch');
 
 function renderGifKeyStatus(){
   const key = settings.gifApiKey;
   if(!key){
-    gifKeyStatus.textContent = 'no key saved yet';
+    gifKeyStatus.innerHTML = 'shows a gif on answers. needs a free <a href="https://klipy.com/developers" target="_blank" rel="noopener">Klipy key</a>';
     gifKeyStatus.classList.remove('warn');
     return;
   }
@@ -638,22 +731,22 @@ function renderGifKeyStatus(){
   // similar-looking ones (e.g. Cyrillic В for B) — a real key should be plain ASCII.
   const looksMangled = /[^\x20-\x7E]/.test(key);
   gifKeyStatus.textContent = looksMangled
-    ? '⚠ this key has unusual characters — your keyboard likely altered it. clear the field and re-paste.'
-    : '✓ key saved on this device';
+    ? 'this key has odd characters. your keyboard may have changed it, so re-paste it'
+    : 'on. key saved on this device';
   gifKeyStatus.classList.toggle('warn', looksMangled);
 }
 
 function renderKrdictKeyStatus(){
   const key = settings.krdictApiKey;
   if(!key){
-    krdictKeyStatus.textContent = 'no key saved — example sentences will use tatoeba only';
+    krdictKeyStatus.innerHTML = 'from Tatoeba. add a <a href="https://krdict.korean.go.kr/eng/openApi/openApiRegister" target="_blank" rel="noopener">KRDict key</a> as a backup';
     krdictKeyStatus.classList.remove('warn');
     return;
   }
   const looksMangled = /[^\x20-\x7E]/.test(key);
   krdictKeyStatus.textContent = looksMangled
-    ? '⚠ this key has unusual characters — your keyboard likely altered it. clear the field and re-paste.'
-    : '✓ key saved on this device';
+    ? 'this key has odd characters. your keyboard may have changed it, so re-paste it'
+    : 'from Tatoeba, with KRDict as a backup';
   krdictKeyStatus.classList.toggle('warn', looksMangled);
 }
 
@@ -667,6 +760,7 @@ function openSettings(){
   renderGifKeyStatus();
   krdictKeyInput.value = settings.krdictApiKey || '';
   renderKrdictKeyStatus();
+  examplesSwitch.setAttribute('aria-checked', String(settings.examples !== false));
 }
 function closeSettings(){
   settingsOverlay.hidden = true;
@@ -695,6 +789,7 @@ sortSegment.addEventListener('click', (e) => {
   settings.sort = btn.dataset.val;
   saveSettings();
   syncSegment(sortSegment, settings.sort);
+  renderChips();
   renderLog();
 });
 
@@ -713,6 +808,12 @@ gifKeyInput.addEventListener('input', () => {
   renderGifKeyStatus();
 });
 
+examplesSwitch.addEventListener('click', () => {
+  settings.examples = settings.examples === false;
+  saveSettings();
+  examplesSwitch.setAttribute('aria-checked', String(settings.examples));
+});
+
 krdictKeyInput.addEventListener('input', () => {
   settings.krdictApiKey = krdictKeyInput.value.trim();
   saveSettings();
@@ -721,7 +822,7 @@ krdictKeyInput.addEventListener('input', () => {
 
 clearAllBtn.addEventListener('click', () => {
   if(entries.length === 0){ showToast('already empty'); return; }
-  const ok = confirm(`delete all ${entries.length} entries? this can't be undone unless you have a backup file.`);
+  const ok = confirm(`delete all ${entries.length} words? this can't be undone unless you have a backup file.`);
   if(!ok) return;
   entries = [];
   saveEntries(entries);
@@ -738,6 +839,11 @@ const tabTrainBtn = document.getElementById('tabTrainBtn');
 const logView     = document.getElementById('logView');
 const trainView   = document.getElementById('trainView');
 const dueDot      = document.getElementById('dueDot');
+const appEl       = document.getElementById('app');
+const fadeBanner  = document.getElementById('fadeBanner');
+const fadeTitle   = document.getElementById('fadeTitle');
+const fadeSub     = document.getElementById('fadeSub');
+const fadeReviewBtn = document.getElementById('fadeReviewBtn');
 
 function switchTab(tab){
   const isLog = tab === 'log';
@@ -745,6 +851,9 @@ function switchTab(tab){
   trainView.hidden = isLog;
   tabLogBtn.classList.toggle('active', isLog);
   tabTrainBtn.classList.toggle('active', !isLog);
+  tabLogBtn.setAttribute('aria-current', isLog ? 'page' : 'false');
+  tabTrainBtn.setAttribute('aria-current', isLog ? 'false' : 'page');
+  appEl.classList.remove('in-session');
   if(!isLog) resetTrainSetupView();
 }
 tabLogBtn.addEventListener('click', () => switchTab('log'));
@@ -756,7 +865,25 @@ function countDue(){
 }
 function updateDueDot(){
   dueDot.hidden = countDue() === 0;
+  renderFadeBanner();
 }
+// "3 words are fading" with danno curled up and a one-tap review; hidden when nothing's due
+function renderFadeBanner(){
+  const due = entries.filter(isDue);
+  fadeBanner.hidden = due.length === 0;
+  if(!due.length) return;
+  const fading = due.filter(hasBeenReviewed).length;
+  const n = due.length;
+  if(fading){
+    fadeTitle.textContent = `${n} ${n === 1 ? 'word is' : 'words are'} fading`;
+    fadeSub.textContent = 'catch them before they slip';
+  }else{
+    fadeTitle.textContent = `${n} new ${n === 1 ? 'word' : 'words'} to try`;
+    fadeSub.textContent = 'see if they stuck';
+  }
+  fadeReviewBtn.textContent = `review ${n}`;
+}
+fadeReviewBtn.addEventListener('click', () => { switchTab('train'); startSession(); });
 
 /* ===================== spaced repetition ===================== */
 // grading here is self-reported (you know best whether you got it) rather than
@@ -781,6 +908,9 @@ function applySrsRating(entry, rating){
 /* ===================== streak ===================== */
 const STREAK_KEY = 'koWordLog.streak.v1';
 const streakCountEl = document.getElementById('streakCount');
+const streakBtn     = document.getElementById('streakBtn');
+const dailyRing     = document.getElementById('dailyRing');
+const RING_LENGTH   = 2 * Math.PI * 15;
 function loadStreak(){
   try{
     const raw = localStorage.getItem(STREAK_KEY);
@@ -808,12 +938,16 @@ function renderStreak(){
   const today = todayStr();
   const display = (streak.lastDate === today || streak.lastDate === yesterdayStr()) ? streak.count : 0;
   streakCountEl.textContent = display;
+  streakBtn.classList.toggle('cold', display === 0);
+  renderStreakLabel();
+}
+function renderStreakLabel(){
+  const goal = settings.dailyGoal || 10;
+  streakBtn.setAttribute('aria-label', `${streakCountEl.textContent}-day streak, ${daily.count} of ${goal} reviews today`);
 }
 
 /* ===================== daily goal progress ===================== */
 const DAILY_KEY = 'koWordLog.daily.v1';
-const dailyProgressFill = document.getElementById('dailyProgressFill');
-const dailyProgressText = document.getElementById('dailyProgressText');
 function loadDaily(){
   try{
     const raw = localStorage.getItem(DAILY_KEY);
@@ -832,9 +966,9 @@ function bumpDaily(){
 }
 function renderDaily(){
   const goal = settings.dailyGoal || 10;
-  const pct = Math.min(100, Math.round((daily.count / goal) * 100));
-  dailyProgressFill.style.width = pct + '%';
-  dailyProgressText.textContent = `${daily.count} / ${goal}`;
+  const filled = Math.min(1, daily.count / goal) * RING_LENGTH;
+  dailyRing.setAttribute('stroke-dasharray', `${filled.toFixed(2)} ${RING_LENGTH.toFixed(2)}`);
+  renderStreakLabel();
 }
 
 /* ===================== word gifs (klipy) ===================== */
@@ -925,7 +1059,7 @@ async function fetchTatoebaExample(word){
     const items = Array.isArray(data?.data) ? data.data : [];
     for(const item of items){
       const ko = item?.text;
-      if(!ko || !ko.includes(word)) continue;
+      if(!ko || findWord(ko, word) === -1) continue;
       const tr = (item.translations || []).find(t => t.lang === 'eng' && t.text);
       if(tr) return { ko, en: tr.text };
     }
@@ -966,17 +1100,32 @@ async function fetchKrdictExample(word){
 }
 
 async function fetchExampleSentence(word){
-  if(!word) return null;
+  if(!word || settings.examples === false) return null;
   const fromTatoeba = await fetchTatoebaExample(word);
   if(fromTatoeba) return fromTatoeba;
   return fetchKrdictExample(word);
 }
 
+// where `word` appears in a korean sentence as a word of its own, or -1. one- and two-syllable
+// words hide inside longer ones (물 in 물러서), so for those the match must start at a word
+// boundary and end at one too, optionally after a particle (물을, 물이, 물도...)
+const KO_PARTICLES = '을|를|이|가|은|는|도|에|에서|의|로|으로|와|과|만|요|이요|하고|랑|이랑|처럼|보다';
+function findWord(text, word){
+  const w = (word || '').replace(/[?.!,\s]+$/, '');
+  if(!w) return -1;
+  if(w.length >= 3) return text.indexOf(w);
+  const esc = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(^|[^\uAC00-\uD7A3])${esc}(?=$|[^\uAC00-\uD7A3]|(?:${KO_PARTICLES})(?:$|[^\uAC00-\uD7A3]))`);
+  const m = re.exec(text);
+  return m ? m.index + m[1].length : -1;
+}
+
 function highlightSpan(text, needle){
   if(!needle) return escapeHtml(text || '');
-  const idx = text.indexOf(needle);
+  const idx = findWord(text, needle);
+  const len = (needle || '').replace(/[?.!,\s]+$/, '').length;
   if(idx === -1) return escapeHtml(text);
-  return escapeHtml(text.slice(0, idx)) + '<mark>' + escapeHtml(text.slice(idx, idx + needle.length)) + '</mark>' + escapeHtml(text.slice(idx + needle.length));
+  return escapeHtml(text.slice(0, idx)) + '<mark>' + escapeHtml(text.slice(idx, idx + len)) + '</mark>' + escapeHtml(text.slice(idx + len));
 }
 
 function highlightEnglish(text, meaning){
@@ -1019,7 +1168,14 @@ const answerExample    = document.getElementById('answerExample');
 const exampleKo        = document.getElementById('exampleKo');
 const exampleEn        = document.getElementById('exampleEn');
 const hintBtn          = document.getElementById('hintBtn');
-const feedbackBurst    = document.getElementById('feedbackBurst');
+const flashStrength    = document.getElementById('flashStrength');
+const revealLabel      = document.getElementById('revealLabel');
+const wrongSub         = document.getElementById('wrongSub');
+const correctSub       = document.getElementById('correctSub');
+const endSessionBtn    = document.getElementById('endSessionBtn');
+const trainProgress    = document.getElementById('trainProgress');
+const trainDannoFig    = document.getElementById('trainDannoFig');
+const summaryList      = document.getElementById('summaryList');
 const trainAnswerForm  = document.getElementById('trainAnswerForm');
 const trainAnswerInput = document.getElementById('trainAnswerInput');
 const ratingRow        = document.getElementById('ratingRow');
@@ -1036,12 +1192,12 @@ function resetTrainSetupView(){
   trainSessionEl.hidden = true;
   trainSummaryEl.hidden = true;
   const due = countDue();
-  trainLead.textContent = entries.length === 0 ? 'nothing to train yet' : 'ready to drill your log';
+  appEl.classList.remove('in-session');
+  trainLead.textContent = entries.length === 0 ? 'nothing to train yet' : due ? `${due} ${due === 1 ? 'word' : 'words'} to review` : 'all caught up';
   trainSub.textContent = entries.length === 0
     ? 'add a few words first'
-    : `${due} due for review · ${entries.length} words total`;
+    : due ? `${entries.length} words in your log` : 'nothing is fading. practice anyway?';
   startTrainBtn.disabled = entries.length === 0;
-  startTrainBtn.style.opacity = entries.length === 0 ? .5 : 1;
 }
 
 dirSegment.addEventListener('click', (e) => {
@@ -1058,19 +1214,8 @@ sizeSegment.addEventListener('click', (e) => {
 });
 shuffleBtn.addEventListener('click', () => {
   trainPrefs.shuffle = !trainPrefs.shuffle;
-  shuffleBtn.classList.toggle('active', trainPrefs.shuffle);
-  if(session) shuffleRemainingQueue();
+  shuffleBtn.setAttribute('aria-pressed', String(trainPrefs.shuffle));
 });
-function shuffleRemainingQueue(){
-  const head = session.queue.slice(0, session.index + 1);
-  const tail = session.queue.slice(session.index + 1);
-  for(let i = tail.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [tail[i], tail[j]] = [tail[j], tail[i]];
-  }
-  session.queue = head.concat(tail);
-}
-
 startTrainBtn.addEventListener('click', () => {
   if(entries.length === 0) return;
   startSession();
@@ -1095,10 +1240,15 @@ function pickDirection(){
   return trainPrefs.dir;
 }
 
-function startSession(){
-  const queue = buildSessionQueue(trainPrefs.size);
-  session = { queue, index: 0, tally: {correct:0,wrong:0}, total: queue.length, requeued: {} };
-  shuffleBtn.classList.toggle('active', trainPrefs.shuffle);
+function startSession(onlyIds){
+  const queue = onlyIds
+    ? onlyIds.map(id => ({ id, direction: pickDirection() }))
+    : buildSessionQueue(trainPrefs.size);
+  if(!queue.length) return;
+  // results: per word, its strength when the session started and how the last rating went
+  session = { queue, index: 0, tally: {correct:0,wrong:0}, total: queue.length, requeued: {}, results: new Map() };
+  appEl.classList.add('in-session');
+  scrollTo(0, 0);
   trainSetup.hidden = true;
   trainSummaryEl.hidden = true;
   trainSessionEl.hidden = false;
@@ -1119,7 +1269,6 @@ function showCard(){
   trainAnswerInput.value = '';
   trainAnswerInput.disabled = false;
   hintBtn.hidden = false;
-  feedbackBurst.hidden = true;
   flashCard.classList.remove('shake');
   ratingRow.style.pointerEvents = '';
   answerGif.hidden = true;
@@ -1134,21 +1283,29 @@ function showCard(){
 
   const pct = Math.round((session.index / session.total) * 100);
   trainProgressFill.style.width = pct + '%';
-  trainProgressText.textContent = `${session.index + 1} / ${session.total}`;
+  trainProgressText.textContent = `${session.index + 1}/${session.total}`;
+  trainProgress.setAttribute('aria-valuemax', session.total);
+  trainProgress.setAttribute('aria-valuenow', session.index);
 
   if(direction === 'ko-en'){
     flashTag.textContent = '한국어 → english';
-    flashPrompt.style.fontFamily = "'Noto Sans KR', sans-serif";
+    flashPrompt.classList.remove('is-en');
+    flashPrompt.lang = 'ko';
     flashPrompt.textContent = entry.korean;
     flashSub.textContent = entry.romanized || '';
     trainAnswerInput.placeholder = 'type the english meaning';
   }else{
     flashTag.textContent = 'english → 한국어';
-    flashPrompt.style.fontFamily = "'Inter', sans-serif";
+    flashPrompt.classList.add('is-en');
+    flashPrompt.lang = 'en';
     flashPrompt.textContent = entry.meaning;
     flashSub.textContent = '';
     trainAnswerInput.placeholder = 'type it in korean';
   }
+  const status = statusOf(entry);
+  // when you last saw it stays as a quiet fact on the card rather than danno saying it
+  flashStrength.innerHTML = `<div class="strength" role="img" aria-label="${strengthLabel(entry)}">${strengthDots(entry)}</div><span class="status ${status.kind}">${status.text}</span><span class="last-seen">${lastSeenText(entry)}</span>`;
+  setTrainPose('stand');
   setTimeout(() => trainAnswerInput.focus(), 50);
 }
 
@@ -1164,10 +1321,17 @@ function revealCard(){
   bumpDaily();
   bumpStreak();
 
+  revealLabel.textContent = isKorean ? 'in korean' : 'meaning';
   revealAnswer.textContent = isKorean ? `${entry.korean}  ·  ${entry.romanized}` : entry.meaning;
-  revealAnswer.style.fontFamily = isKorean ? "'Noto Sans KR', sans-serif" : "'Inter', sans-serif";
-  revealNote.textContent = typed ? `you typed: "${typed}"` : '';
+  revealAnswer.lang = isKorean ? 'ko' : 'en';
+  revealNote.textContent = typed ? `you wrote “${typed}”` : '';
   flashReveal.hidden = false;
+
+  // say what each choice will do before you pick it
+  const key = session.queue[session.index].id;
+  wrongSub.textContent = (session.requeued[key] || 0) < 1 ? 'again in this session' : 'back to the start';
+  correctSub.textContent = daysText(BOX_INTERVALS[Math.min(strengthOf(entry) + 1, MAX_BOX)], 'next');
+  dannoReact('lean', 'peek');
 
   trainAnswerForm.hidden = true;
   hintBtn.hidden = true;
@@ -1207,14 +1371,31 @@ trainAnswerForm.addEventListener('submit', (e) => {
 });
 hintBtn.addEventListener('click', revealCard);
 
+/* ---------- danno in training ---------- */
+// he watches the question, leans in for the answer, hops when you know it and curls up
+// when you don't. no talking. pose swaps happen mid-squash so they read as one movement
+function setTrainPose(pose){
+  trainDannoFig.querySelectorAll('img').forEach(img => img.classList.toggle('on', img.dataset.pose === pose));
+}
+function dannoReact(move, pose){
+  trainDannoFig.classList.remove('hop', 'sulk', 'lean');
+  void trainDannoFig.offsetWidth;
+  trainDannoFig.classList.add(move);
+  setTimeout(() => setTrainPose(pose), 110);
+}
+function lastSeenText(entry){
+  if(!hasBeenReviewed(entry)) return 'first review';
+  const last = entry.srs.dueAt - BOX_INTERVALS[entry.srs.box];
+  const days = Math.round((Date.now() - last) / DAY_MS);
+  if(days <= 0) return 'seen earlier today';
+  return days === 1 ? 'seen yesterday' : `seen ${days} days ago`;
+}
+
 function playFeedback(rating){
-  const isCorrect = rating === 'correct';
-  feedbackBurst.className = 'feedback-burst ' + (isCorrect ? 'correct' : 'wrong');
-  feedbackBurst.innerHTML = isCorrect
-    ? '<svg viewBox="0 0 24 24" width="68" height="68"><path d="M4 12.5l5.5 5.5L20 6.5" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-    : '<svg viewBox="0 0 24 24" width="68" height="68"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg>';
-  feedbackBurst.hidden = false;
-  if(!isCorrect){
+  if(rating === 'correct'){
+    dannoReact('hop', 'stand');
+  }else{
+    dannoReact('sulk', 'knees');
     flashCard.classList.remove('shake');
     void flashCard.offsetWidth;
     flashCard.classList.add('shake');
@@ -1230,6 +1411,8 @@ ratingRow.addEventListener('click', (e) => {
   const { entry, direction } = cur;
 
   ratingRow.style.pointerEvents = 'none';
+  const prev = session.results.get(entry.id);
+  session.results.set(entry.id, { startBox: prev ? prev.startBox : strengthOf(entry), rating });
   applySrsRating(entry, rating);
   saveEntries(entries);
   session.tally[rating]++;
@@ -1245,25 +1428,69 @@ ratingRow.addEventListener('click', (e) => {
     }
   }
 
+  // long enough to see danno react before the next card
   setTimeout(() => {
     session.index++;
     showCard();
-  }, 480);
+  }, 900);
 });
 
+// "8 of 9 kept": each word's last rating decides whether it was kept, and the list shows
+// how its strength moved this session
+let missedIds = [];
 function finishSession(){
   trainSessionEl.hidden = true;
   trainSummaryEl.hidden = false;
-  const t = session.tally;
-  const attempted = t.correct + t.wrong;
-  const pct = attempted ? Math.round((t.correct / attempted) * 100) : 0;
-  summaryHeadline.textContent = pct >= 80 ? 'excellent run' : pct >= 50 ? 'good progress' : 'keep at it';
-  summarySub.textContent = `${t.correct} correct · ${t.wrong} missed`;
+  appEl.classList.add('in-session');
+  scrollTo(0, 0);
+
+  const rows = [...session.results].map(([id, r]) => ({ entry: entries.find(e => e.id === id), ...r })).filter(r => r.entry);
+  const kept = rows.filter(r => r.rating === 'correct');
+  const missed = rows.filter(r => r.rating === 'wrong');
+  missedIds = missed.map(r => r.entry.id);
+
+  if(!rows.length){
+    summaryHeadline.textContent = 'no cards rated';
+    summarySub.textContent = 'come back when you’re ready';
+  }else{
+    summaryHeadline.textContent = `${kept.length} of ${rows.length} kept`;
+    summarySub.textContent = !missed.length
+      ? 'every word held on'
+      : missed.length === 1
+        ? `${missed[0].entry.korean} slipped. it’s first in line next time`
+        : `${missed.length} slipped. they’re first in line next time`;
+  }
+
+  summaryList.hidden = !rows.length;
+  summaryList.innerHTML = rows.map(({ entry, startBox, rating }) => {
+    const change = rating === 'wrong' ? 'reset' : (strengthOf(entry) > startBox ? '+1' : 'kept');
+    return `<li>
+      <div class="summary-word">
+        <p class="summary-ko" lang="ko">${escapeHtml(entry.korean)}</p>
+        <p class="summary-meaning">${escapeHtml(entry.meaning)}</p>
+      </div>
+      <div class="strength" role="img" aria-label="${strengthLabel(entry)}">${strengthDots(entry)}</div>
+      <span class="summary-change${change === 'reset' ? ' reset' : ''}">${change}</span>
+    </li>`;
+  }).join('');
+
+  trainAgainBtn.textContent = !missed.length
+    ? 'train again'
+    : missed.length === 1 ? `retry ${missed[0].entry.korean}` : `retry ${missed.length} missed`;
+  renderLog();
   updateDueDot();
 }
 
 backToLogBtn.addEventListener('click', () => switchTab('log'));
-trainAgainBtn.addEventListener('click', () => { resetTrainSetupView(); });
+trainAgainBtn.addEventListener('click', () => {
+  if(missedIds.length) startSession(missedIds);
+  else resetTrainSetupView();
+});
+// ending early still shows what you did; ending before rating anything just goes back
+endSessionBtn.addEventListener('click', () => {
+  if(session && session.results.size) finishSession();
+  else resetTrainSetupView();
+});
 
 /* ===================== init ===================== */
 updateDueDot();
