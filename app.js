@@ -344,7 +344,8 @@ function buildEntryCard(entry){
     card.querySelector('[data-check]').addEventListener('keydown', (e) => { if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); toggle(); } });
     card.querySelector('.entry-main').addEventListener('click', toggle);
   }else{
-    card.querySelector('.listen-btn').addEventListener('click', () => speak(entry.korean));
+    const listenBtn = card.querySelector('.listen-btn');
+    listenBtn.addEventListener('click', () => speak(entry.korean, listenBtn));
     card.querySelector('.more-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       toggleEntryMenu(card, entry);
@@ -436,19 +437,76 @@ function deleteEntry(id){
 }
 
 /* ===================== speech ===================== */
-function speak(text){
+// Three browser quirks shape this:
+// - With no Korean voice, an English voice "reads" hangul as silence and reports success,
+//   so that case has to be caught up front and explained.
+// - Chrome can drop a speak() made right after cancel() and sit on speaking=true forever,
+//   so when something is playing we wait a beat, and retry once if it never starts.
+// - The utterance must stay referenced or Chrome can garbage-collect it mid-word.
+const SPEAK_SETTLE_MS = 150;
+const SPEAK_START_TIMEOUT_MS = 3000;
+let speakToken = 0;
+let activeUtter = null;
+let speakingBtn = null;
+function setSpeakingBtn(btn){
+  if(speakingBtn) speakingBtn.classList.remove('speaking');
+  speakingBtn = btn || null;
+  if(speakingBtn) speakingBtn.classList.add('speaking');
+}
+function koreanVoice(voices){
+  const lang = v => v.lang.toLowerCase().replace('_', '-');
+  return voices.find(v => lang(v) === 'ko-kr') || voices.find(v => lang(v).startsWith('ko'));
+}
+function speak(text, btn){
   if(!('speechSynthesis' in window)){
     showToast('speech not supported on this device');
     return;
   }
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'ko-KR';
-  utter.rate = 0.85;
-  const voices = window.speechSynthesis.getVoices();
-  const koVoice = voices.find(v => v.lang === 'ko-KR') || voices.find(v => v.lang.startsWith('ko'));
-  if(koVoice) utter.voice = koVoice;
-  window.speechSynthesis.speak(utter);
+  const synth = window.speechSynthesis;
+  const voices = synth.getVoices();
+  const koVoice = koreanVoice(voices);
+  // an empty list only means voices haven't loaded yet: asking by lang can still work
+  if(voices.length && !koVoice){
+    showToast('no korean voice here. add one in your device’s speech settings');
+    return;
+  }
+
+  const token = ++speakToken;
+  setSpeakingBtn(btn);
+  const wasBusy = synth.speaking || synth.pending;
+  synth.cancel();
+
+  const attempt = (isRetry) => {
+    if(token !== speakToken) return;
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'ko-KR';
+    utter.rate = 0.85;
+    if(koVoice) utter.voice = koVoice;
+    activeUtter = utter;
+    let started = false;
+    utter.onstart = () => { started = true; };
+    utter.onend = () => { if(token === speakToken) setSpeakingBtn(null); };
+    utter.onerror = (e) => {
+      started = true; // settled: the watchdog has nothing left to do
+      if(token !== speakToken) return;
+      setSpeakingBtn(null);
+      // interrupted/canceled are just us replacing the word with a newer tap
+      if(e.error === 'interrupted' || e.error === 'canceled') return;
+      showToast(e.error === 'not-allowed' ? 'tap again to hear it' : 'couldn’t play that. check your connection');
+    };
+    synth.resume(); // Chrome can leave the queue paused
+    synth.speak(utter);
+    setTimeout(() => {
+      if(started || token !== speakToken) return;
+      synth.cancel();
+      if(!isRetry){ setTimeout(() => attempt(true), SPEAK_SETTLE_MS); return; }
+      setSpeakingBtn(null);
+      showToast('the voice isn’t responding. check your connection');
+    }, SPEAK_START_TIMEOUT_MS);
+  };
+  // no timeout when idle: iOS only allows speech directly inside the tap
+  if(wasBusy) setTimeout(() => attempt(false), SPEAK_SETTLE_MS);
+  else attempt(false);
 }
 // warm up voice list (some browsers load async)
 if('speechSynthesis' in window){
@@ -1269,6 +1327,7 @@ function startSession(onlyIds){
     ? onlyIds.map(id => ({ id, direction: pickDirection() }))
     : buildSessionQueue(trainPrefs.size);
   if(!queue.length) return;
+  clearRateFx();
   // results: per word, its strength when the session started and how the last rating went
   session = { queue, index: 0, tally: {correct:0,wrong:0}, total: queue.length, requeued: {}, results: new Map() };
   appEl.classList.add('in-session');
@@ -1293,8 +1352,8 @@ function showCard(){
   trainAnswerInput.value = '';
   trainAnswerInput.disabled = false;
   hintBtn.hidden = false;
-  flashCard.classList.remove('shake');
-  ratingRow.style.pointerEvents = '';
+  session.rating = false;
+  delete ratingRow.dataset.chosen;
   answerGif.hidden = true;
   answerGifImg.src = '';
   answerExample.hidden = true;
@@ -1326,10 +1385,14 @@ function showCard(){
     flashSub.textContent = '';
     trainAnswerInput.placeholder = 'type it in korean';
   }
+  renderFlashStrength(entry);
+  setTimeout(() => trainAnswerInput.focus({ preventScroll: true }), 50);
+}
+function renderFlashStrength(entry, justRated){
   const status = statusOf(entry);
-  // when you last saw it stays as a quiet fact on the card
-  flashStrength.innerHTML = `<div class="strength" role="img" aria-label="${strengthLabel(entry)}">${strengthDots(entry)}</div><span class="status ${status.kind}">${status.text}</span><span class="last-seen">${lastSeenText(entry)}</span>`;
-  setTimeout(() => trainAnswerInput.focus(), 50);
+  // when you last saw it stays as a quiet fact on the card, until you've just seen it
+  const lastSeen = justRated ? '' : `<span class="last-seen">${lastSeenText(entry)}</span>`;
+  flashStrength.innerHTML = `<div class="strength" role="img" aria-label="${strengthLabel(entry)}">${strengthDots(entry)}</div><span class="status ${status.kind}">${status.text}</span>${lastSeen}`;
 }
 
 // reveal the answer without judging it — free-form phrasing has too many valid
@@ -1401,29 +1464,192 @@ function lastSeenText(entry){
   return days === 1 ? 'seen yesterday' : `seen ${days} days ago`;
 }
 
-function playFeedback(rating){
-  if(rating === 'wrong'){
-    flashCard.classList.remove('shake');
-    void flashCard.offsetWidth;
-    flashCard.classList.add('shake');
+/* ---------- rating moment ---------- */
+// Beat 1: a stamp lands on the card and the memory dots change. Beat 2: a copy of the card
+// flies off (right = kept, left = missed) while the real card, already holding the next
+// word, rises from behind it. Web Animations rather than GSAP so training still animates if
+// the CDN didn't load. Timing lives in setTimeout, not animation events, so a backgrounded
+// tab can never strand the session. Final states are set in CSS/inline so the cloned card
+// looks identical to the original the moment it takes over.
+const RATE_BEAT_MS = { correct: 400, wrong: 440 };
+const RATE_REDUCED_HOLD_MS = 450;
+const RATE_EXIT_MS = 300;
+const EASE_OUT = 'cubic-bezier(.22,1,.36,1)';
+const EASE_IN = 'cubic-bezier(.5,0,.9,.4)';
+const STAMP_PATHS = {
+  correct: '<path pathLength="1" d="M13 25l8 8 15-17"/>',
+  wrong: '<path pathLength="1" d="M16 16l16 16"/><path pathLength="1" d="M32 16L16 32"/>'
+};
+let rateRun = 0;   // bumped to abandon an in-flight rating moment
+let rateLayer = null;
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function clearRateFx(){
+  rateRun++;
+  if(rateLayer){ rateLayer.remove(); rateLayer = null; }
+  const fx = flashCard.querySelector('.rate-fx');
+  if(fx) fx.remove();
+}
+
+function animateStrengthChange(rating, entry, startBox){
+  const dots = flashStrength.querySelectorAll('.strength i');
+  if(rating === 'correct'){
+    const dot = dots[strengthOf(entry) - 1];
+    if(dot) dot.animate(
+      [{ transform: 'scale(.2)', background: 'var(--gold)' }, { transform: 'scale(1.7)', background: 'var(--gold)', offset: .55 }, { transform: 'scale(1)' }],
+      { duration: 420, delay: 120, easing: EASE_OUT, fill: 'backwards' }
+    );
+    return;
   }
+  // the strength you had drains away, right to left
+  for(let i = startBox - 1; i >= 0; i--){
+    dots[i].animate(
+      [{ background: 'var(--dot-on)', transform: 'scale(1)' }, { background: 'var(--danger)', transform: 'scale(1.25)', offset: .4 }, { transform: 'scale(1)' }],
+      { duration: 260, delay: 60 + (startBox - 1 - i) * 45, easing: 'ease-out', fill: 'backwards' }
+    );
+  }
+}
+
+function buildRateLayer(cx, cy){
+  const layer = document.createElement('div');
+  layer.className = 'rate-layer';
+  layer.setAttribute('aria-hidden', 'true');
+  const ring = document.createElement('div');
+  ring.className = 'rate-ring';
+  ring.style.left = cx + 'px';
+  ring.style.top = cy + 'px';
+  layer.appendChild(ring);
+  ring.animate(
+    [{ transform: 'translate(-50%,-50%) scale(.8)', opacity: .8 }, { transform: 'translate(-50%,-50%) scale(2.1)', opacity: 0 }],
+    { duration: 520, delay: 90, easing: EASE_OUT, fill: 'both' }
+  );
+  const COUNT = 10;
+  for(let i = 0; i < COUNT; i++){
+    const bit = document.createElement('i');
+    bit.className = 'rate-bit' + (i % 2 ? ' alt' : '');
+    bit.style.left = cx + 'px';
+    bit.style.top = cy + 'px';
+    layer.appendChild(bit);
+    const angle = (i / COUNT) * Math.PI * 2 + .3;
+    const at = (radius) => `translate(calc(-50% + ${Math.cos(angle) * radius}px), calc(-50% + ${Math.sin(angle) * radius}px))`;
+    // starts at the stamp's edge, so nothing ever sits on top of the mark
+    bit.animate(
+      [{ transform: `${at(34)} scale(1)`, opacity: 0 }, { opacity: 1, offset: .08 }, { transform: `${at(58 + (i % 3) * 14)} scale(0)`, opacity: 1 }],
+      { duration: 540, delay: 90, easing: EASE_OUT, fill: 'both' }
+    );
+  }
+  return layer;
+}
+
+async function playRatingMoment(rating, entry, startBox){
+  const run = ++rateRun;
+  const good = rating === 'correct';
+  const motion = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  renderFlashStrength(entry, true);
+
+  // the top-right corner is empty once the answer is showing, so the stamp hides no text;
+  // it follows you down if a tall card is scrolled
+  const rect = flashCard.getBoundingClientRect();
+  const stampX = rect.width - 50;
+  const stampY = Math.max(50, 50 - rect.top);
+  const fx = document.createElement('div');
+  fx.className = 'rate-fx ' + (good ? 'good' : 'bad');
+  fx.setAttribute('aria-hidden', 'true');
+  fx.innerHTML = `<div class="rate-wash"></div><div class="rate-stamp" style="left:${stampX}px;top:${stampY}px"><svg viewBox="0 0 48 48" width="46" height="46">${STAMP_PATHS[rating]}</svg></div>`;
+  flashCard.appendChild(fx);
+
+  if(!motion){
+    // same information, no travel: the stamp and dots stay up for a moment, then the card swaps
+    await delay(RATE_REDUCED_HOLD_MS);
+    if(run !== rateRun) return;
+    fx.remove();
+    session.index++;
+    scrollTo(0, 0);
+    showCard();
+    return;
+  }
+
+  fx.querySelector('.rate-wash').animate([{ opacity: 0 }, {}], { duration: 200, easing: 'ease-out' });
+  fx.querySelector('.rate-stamp').animate(
+    [{ transform: 'translate(-50%,-50%) scale(.3)', opacity: 0 }, { transform: 'translate(-50%,-50%) scale(1.14)', opacity: 1, offset: .6 }, { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }],
+    { duration: 340, easing: EASE_OUT }
+  );
+  fx.querySelectorAll('path').forEach((path, i) => {
+    path.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 220, delay: 90 + i * 70, easing: 'ease-out', fill: 'backwards' });
+  });
+  animateStrengthChange(rating, entry, startBox);
+
+  // a miss gets no confetti, only the layer the flying card needs
+  rateLayer = good
+    ? buildRateLayer(rect.left + stampX, rect.top + stampY)
+    : Object.assign(document.createElement('div'), { className: 'rate-layer' });
+  document.body.appendChild(rateLayer);
+  const layer = rateLayer;
+
+  flashCard.animate(
+    good
+      ? [{ transform: 'scale(1)' }, { transform: 'scale(1.025)', offset: .4 }, { transform: 'scale(1)' }]
+      : [{ transform: 'translateX(0)' }, { transform: 'translateX(-7px)', offset: .2 }, { transform: 'translateX(6px)', offset: .4 }, { transform: 'translateX(-4px)', offset: .6 }, { transform: 'translateX(2px)', offset: .8 }, { transform: 'translateX(0)' }],
+    { duration: good ? 300 : 380, easing: 'ease-out' }
+  );
+
+  await delay(RATE_BEAT_MS[rating]);
+  if(run !== rateRun) return;
+
+  // hand the look of this card to a copy, and let the real card move on underneath it
+  const from = flashCard.getBoundingClientRect();
+  const ghost = flashCard.cloneNode(true);
+  ghost.removeAttribute('id');
+  ghost.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+  ghost.classList.add('rate-ghost');
+  ghost.style.cssText = `left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px;`;
+  layer.prepend(ghost);
+
+  fx.remove();
+  session.index++;
+  scrollTo(0, 0);
+  showCard();
+
+  const dir = good ? 1 : -1;
+  ghost.animate(
+    [{ transform: 'translate(0,0) rotate(0)', opacity: 1 }, { opacity: 1, offset: .55 }, { transform: `translate(${dir * Math.max(innerWidth * .7, from.width * 1.1)}px, ${good ? -18 : 14}px) rotate(${dir * 9}deg)`, opacity: 0 }],
+    { duration: RATE_EXIT_MS, easing: EASE_IN, fill: 'forwards' }
+  );
+  if(!trainSessionEl.hidden){
+    flashCard.animate(
+      [{ transform: 'translateY(20px) scale(.94)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+      { duration: 380, delay: 70, easing: EASE_OUT, fill: 'backwards' }
+    );
+    trainAnswerForm.animate(
+      [{ transform: 'translateY(12px)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+      { duration: 320, delay: 140, easing: EASE_OUT, fill: 'backwards' }
+    );
+  }
+
+  await delay(RATE_EXIT_MS + 120);
+  if(run !== rateRun) return;
+  layer.remove();
+  if(rateLayer === layer) rateLayer = null;
 }
 
 ratingRow.addEventListener('click', (e) => {
   const btn = e.target.closest('.rating-btn');
-  if(!btn) return;
+  if(!btn || session.rating) return;
   const rating = btn.dataset.rating; // 'correct' | 'wrong'
   const cur = currentEntry();
   if(!cur) return;
   const { entry, direction } = cur;
 
-  ratingRow.style.pointerEvents = 'none';
+  session.rating = true; // one rating per card, by mouse, touch or keyboard
+  ratingRow.dataset.chosen = rating;
+  delete ratingRow.dataset.entryId; // a late GIF or example must not resize the card mid-animation
   const prev = session.results.get(entry.id);
-  session.results.set(entry.id, { startBox: prev ? prev.startBox : strengthOf(entry), rating });
+  const startBox = strengthOf(entry);
+  session.results.set(entry.id, { startBox: prev ? prev.startBox : startBox, rating });
   applySrsRating(entry, rating);
   saveEntries(entries);
   session.tally[rating]++;
-  playFeedback(rating);
 
   if(rating === 'wrong'){
     const key = session.queue[session.index].id;
@@ -1435,11 +1661,9 @@ ratingRow.addEventListener('click', (e) => {
     }
   }
 
-  // long enough to see the rating land before the next card
-  setTimeout(() => {
-    session.index++;
-    showCard();
-  }, 900);
+  // progress moves the moment you answer, not when the next card arrives
+  trainProgressFill.style.width = Math.round(((session.index + 1) / session.total) * 100) + '%';
+  playRatingMoment(rating, entry, startBox);
 });
 
 // "8 of 9 kept": each word's last rating decides whether it was kept, and the list shows
@@ -1495,6 +1719,7 @@ trainAgainBtn.addEventListener('click', () => {
 });
 // ending early still shows what you did; ending before rating anything just goes back
 endSessionBtn.addEventListener('click', () => {
+  clearRateFx();
   if(session && session.results.size) finishSession();
   else resetTrainSetupView();
 });
