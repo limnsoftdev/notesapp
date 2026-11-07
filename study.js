@@ -3,7 +3,7 @@
 // no code. Loaded after app.js and uses its globals (escapeHtml, showToast, appEl, switchTab,
 // BOX_INTERVALS, MAX_BOX). All course text goes through escapeHtml.
 // Study is its own world, separate from the word log: its own colors (html.world-study), its
-// own screens and its own xp and streak. It never touches the word log's daily goal or streak.
+// own screens and its own streak. It never touches the word log's daily goal or streak.
 // Unlike word training, answers grade themselves, because each question has one right option.
 // Missed questions come back through the same Leitner intervals as words.
 
@@ -26,7 +26,7 @@ const ITEM_BY_KEY = new Map();
 COURSES.forEach(course => course.items.forEach(item => ITEM_BY_KEY.set(item.key, item)));
 
 function loadStudy(){
-  const empty = { progress: {}, mocks: {}, active: null, reported: [], lessons: {}, xp: 0, streak: { count: 0, lastDate: null }, world: 'words' };
+  const empty = { progress: {}, mocks: {}, active: null, reported: [], lessons: {}, streak: { count: 0, lastDate: null }, world: 'words' };
   try{
     return { ...empty, ...JSON.parse(localStorage.getItem(STUDY_KEY)) };
   }catch(e){
@@ -37,10 +37,10 @@ let study = loadStudy();
 function saveStudy(){ localStorage.setItem(STUDY_KEY, JSON.stringify(study)); }
 
 /* ---------- backup (called from app.js) ---------- */
-function studyHasData(){ return study.xp > 0 || Object.keys(study.progress).length > 0 || Object.keys(study.mocks).length > 0; }
+function studyHasData(){ return Object.keys(study.lessons).length > 0 || Object.keys(study.progress).length > 0 || Object.keys(study.mocks).length > 0; }
 function studyBackupData(){
-  const { progress, mocks, reported, lessons, xp, streak } = study; // an attempt in progress isn't worth restoring
-  return { progress, mocks, reported, lessons, xp, streak };
+  const { progress, mocks, reported, lessons, streak } = study; // an attempt in progress isn't worth restoring
+  return { progress, mocks, reported, lessons, streak };
 }
 // keeps whichever answer is newest per question, and every mock from both sides
 function mergeStudyBackup(incoming){
@@ -56,7 +56,6 @@ function mergeStudyBackup(incoming){
   });
   study.reported = [...new Set([...study.reported, ...(incoming.reported || [])])];
   study.lessons = { ...(incoming.lessons || {}), ...study.lessons };
-  study.xp = Math.max(study.xp, incoming.xp || 0);
   if(incoming.streak && (incoming.streak.lastDate || '') > (study.streak.lastDate || '')) study.streak = incoming.streak;
   saveStudy();
   if(!studyView.hidden) renderStudy();
@@ -73,9 +72,8 @@ function recordAnswer(key, isRight){
   p.at = now;
   study.progress[key] = p;
 }
-// xp and the streak belong to study alone; the word log keeps its own
-function earnXp(amount){
-  study.xp += amount;
+// the streak belongs to study alone; the word log keeps its own
+function markStudied(){
   const today = todayStr();
   if(study.streak.lastDate !== today){
     study.streak = { count: study.streak.lastDate === yesterdayStr() ? study.streak.count + 1 : 1, lastDate: today };
@@ -194,7 +192,6 @@ function showScreen(next){
 function statChips(){
   return `<div class="study-stats">
     <span class="study-stat"><b>${study.streak.lastDate === todayStr() || study.streak.lastDate === yesterdayStr() ? study.streak.count : 0}</b> day streak</span>
-    <span class="study-stat"><b>${study.xp}</b> xp</span>
   </div>`;
 }
 const lessonsOf = (course) => course.lessons || [];
@@ -286,9 +283,8 @@ function renderPath(course){
         ? `data-act="practice-unit" data-course="${escapeHtml(course.id)}" data-unit="${escapeHtml(stop.unit.id)}"`
         : `data-act="set-tab" data-tab="test"`;
     const labelSide = stop.x > 50 ? 'left' : 'right';
-    const pose = PATH_POSES[stop.kind][0];
     return `<div class="path-stop" style="left:${stop.x}%;top:${stop.y}px">
-      ${isCurrent ? `<img class="path-danno${labelSide === 'left' ? ' flip' : ''}" data-kind="${stop.kind}" src="danno/${pose}.png" width="300" height="500" alt="">` : ''}
+      ${isCurrent ? `<img class="path-danno${labelSide === 'left' ? ' flip' : ''}" src="danno/knees.png" width="300" height="500" alt="">` : ''}
       <button class="path-node ${stop.kind}${stop.done ? ' done' : ''}${isCurrent ? ' current' : ''}" type="button" ${attrs} aria-label="${escapeHtml(stop.title)}${stop.done ? ', done' : ''}${isCurrent ? ', up next' : ''}">
         ${stop.done ? PATH_ICON.done : PATH_ICON[stop.kind]}
       </button>
@@ -436,7 +432,7 @@ function renderQuiz(){
   const sheet = revealed ? resultSheet({
     good: chosen === CORRECT_OPTION,
     title: quiz.praise,
-    chips: [quiz.earned ? `+${quiz.earned} xp` : '', quiz.combo >= 2 ? `${quiz.combo} in a row` : ''].filter(Boolean),
+    chips: quiz.combo >= 2 ? [`${quiz.combo} in a row`] : [],
     why: escapeHtml(item.why),
     enter: quiz.justAnswered,
     extra: `<button class="report-btn" type="button" data-act="report" aria-pressed="${reportedHere}">${reportedHere ? 'marked to check' : 'answer looks wrong?'}</button>`,
@@ -482,7 +478,7 @@ function renderQuiz(){
   streakBar.set(isExam ? 0 : quiz.combo || 0, quiz);
   if(quiz.justAnswered){
     quiz.justAnswered = false;
-    playAnswerFx(chosen === CORRECT_OPTION, quiz.combo, quiz.earned);
+    playAnswerFx(chosen === CORRECT_OPTION, quiz.combo);
   }
 }
 function focusAfterRender(revealed){
@@ -557,7 +553,7 @@ function finishExam(timedOut){
   });
   rows.filter(row => row.answer !== undefined).forEach(row => {
     recordAnswer(row.key, row.right);
-    earnXp(row.right ? 2 : 1);
+    markStudied();
   });
   const score = rows.filter(row => row.right).length;
   const secs = Math.round((Math.min(Date.now(), exam.endsAt) - exam.startedAt) / 1000);
@@ -663,12 +659,10 @@ function choose(option){
   recordAnswer(current.key, isRight);
   quiz.combo = isRight ? (quiz.combo || 0) + 1 : 0;
   quiz.praise = pickOne(isRight ? PRAISE : ENCOURAGE);
-  quiz.earned = 0;
   quiz.justAnswered = true;
   if(!quiz.firstTry[current.key]){
     quiz.firstTry[current.key] = { answer: option, right: isRight };
-    quiz.earned = isRight ? 2 : 1;
-    earnXp(quiz.earned);
+    markStudied();
   }
   // a miss comes back once at the end of this run, while the explanation is still fresh
   if(!isRight && !quiz.requeued[current.key]){

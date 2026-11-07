@@ -8,8 +8,6 @@
 // Visuals are code rather than data, so course files stay plain text and can't inject markup.
 // Loaded after study.js and uses its globals.
 
-const LESSON_XP_FIRST = 20;
-const LESSON_XP_REPEAT = 5;
 
 /* ---------- drawing helpers ---------- */
 const svgWrap = (height, inner, label) =>
@@ -258,7 +256,7 @@ function lessonSheet(step, st){
   return resultSheet({
     good: st.sheet.good,
     title: st.sheet.title,
-    chips: [st.sheet.xp ? `+${st.sheet.xp} xp` : '', lesson.combo >= 2 ? `${lesson.combo} in a row` : ''].filter(Boolean),
+    chips: lesson.combo >= 2 ? [`${lesson.combo} in a row`] : [],
     why,
     enter: !!lesson.fx,
     action: `<button class="study-btn ${st.sheet.good ? 'gold' : 'solid'} wide" type="button" data-act="l-next">${label}</button>`
@@ -299,7 +297,7 @@ function playLessonFx(){
   (fx.pop || []).forEach(selector => popEl(studyView.querySelector(selector)));
   if(fx.burst) burstAt(studyView.querySelector(fx.burst));
   if(fx.shake) shakeEl(studyView.querySelector(fx.shake));
-  if(fx.answer) playAnswerFx(fx.answer.good, lesson.combo, fx.answer.xp);
+  if(fx.answer) playAnswerFx(fx.answer.good, lesson.combo);
 }
 function renderLessonDone(){
   const course = courseById(lesson.courseId);
@@ -310,7 +308,6 @@ function renderLessonDone(){
       <p class="study-kicker">lesson complete</p>
       <h2 class="study-title">${escapeHtml(lesson.def.title)}</h2>
       <div class="done-stats">
-        <div><b>+${lesson.earned}</b><span>xp</span></div>
         <div><b>${study.streak.count}</b><span>day streak</span></div>
         <div><b>${clean ? 'none' : lesson.mistakes}</b><span>${lesson.mistakes === 1 ? 'mistake' : 'mistakes'}</span></div>
       </div>
@@ -410,17 +407,15 @@ function lessonAction(el){
       st.picked = Number(el.dataset.option);
       const right = st.picked === CORRECT_OPTION;
       recordAnswer(`${lesson.courseId}:${step.ref}`, right);
-      const xp = right ? 2 : 0;
       if(right){
         lesson.combo = (lesson.combo || 0) + 1;
-        lesson.bonus = (lesson.bonus || 0) + xp;
-        earnXp(xp);
+        markStudied();
       }else{
         lesson.mistakes++;
         lesson.combo = 0;
       }
-      st.sheet = { good: right, title: pickOne(right ? PRAISE : ENCOURAGE), xp };
-      lesson.fx = { answer: { good: right, xp } };
+      st.sheet = { good: right, title: pickOne(right ? PRAISE : ENCOURAGE) };
+      lesson.fx = { answer: { good: right } };
       saveStudy();
       break;
     }
@@ -429,17 +424,14 @@ function lessonAction(el){
   if(['order', 'match', 'sort'].includes(step.type) && !st.sheet && stepCanContinue(step, st)){
     lesson.combo = (lesson.combo || 0) + 1;
     st.sheet = { good: true, title: pickOne(PRAISE) };
-    lesson.fx = { ...(lesson.fx || {}), answer: { good: true, xp: 0 } };
+    lesson.fx = { ...(lesson.fx || {}), answer: { good: true } };
   }
   renderLesson();
 }
 function finishLesson(){
   const { def } = lesson;
-  const first = !(study.lessons[def.id] && study.lessons[def.id].done);
-  const base = first ? LESSON_XP_FIRST : LESSON_XP_REPEAT;
-  lesson.earned = base + (lesson.bonus || 0);
   study.lessons[def.id] = { done: true, at: Date.now(), mistakes: lesson.mistakes };
-  earnXp(base);
+  markStudied();
   saveStudy();
   lesson.finished = true;
   renderLesson();
@@ -510,21 +502,6 @@ function shakeEl(el){
     { duration: 340, easing: 'ease-out' }
   );
 }
-function floatXp(el, amount){
-  if(!el || !amount || !motionAllowed()) return;
-  const rect = el.getBoundingClientRect();
-  const tag = document.createElement('div');
-  tag.className = 'xp-float';
-  tag.setAttribute('aria-hidden', 'true');
-  tag.textContent = `+${amount} xp`;
-  tag.style.left = `${rect.right - 44}px`;
-  tag.style.top = `${rect.top + 8}px`;
-  document.body.appendChild(tag);
-  tag.animate(
-    [{ transform: 'translateY(8px) scale(.7)', opacity: 0 }, { transform: 'translateY(-14px) scale(1.1)', opacity: 1, offset: .25 }, { transform: 'translateY(-54px) scale(1)', opacity: 0 }],
-    { duration: 900, easing: 'ease-out' }
-  ).onfinish = () => tag.remove();
-}
 function hopDanno(el, hops = 2){
   if(!el || !motionAllowed()) return;
   const frames = [{ transform: 'translateY(0) scale(1.08,.9)' }];
@@ -556,14 +533,13 @@ function confetti(pieces = 34){
   setTimeout(() => layer.remove(), 2000);
 }
 // plays once, right after the answer's screen has been drawn
-function playAnswerFx(good, combo, xp){
+function playAnswerFx(good, combo){
   if(!motionAllowed()) return;
   const danno = studyView.querySelector('.sheet-danno');
   if(good){
     const option = studyView.querySelector('.quiz-option.is-right');
     popEl(option);
     burstAt(option ? option.querySelector('.option-mark') : studyView.querySelector('.sheet-title'));
-    floatXp(option || danno, xp);
     hopDanno(danno, combo >= COMBO_CONFETTI ? 3 : 2);
     const fill = studyView.querySelector('.train-progress-fill');
     if(fill) fill.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(1.5)', offset: .4 }, { filter: 'brightness(1)' }], { duration: 600 });
@@ -585,25 +561,8 @@ function leaveThen(next){
 }
 
 /* ---------- the path comes alive ---------- */
-const PATH_POSES = { lesson: ['stand', 'peek'], practice: ['peek', 'stand'], exam: ['knees', 'stand'] };
-let pathIdleTimer = null;
 let pathHopFrom = null; // the lesson just finished, so Danno can hop onward from it
-// he hops now and then, and changes pose at the top of the hop where the swap can't be seen
-function startPathIdle(){
-  clearInterval(pathIdleTimer);
-  if(!motionAllowed()) return;
-  pathIdleTimer = setInterval(() => {
-    const danno = studyView.querySelector('.path-danno');
-    if(!danno){ clearInterval(pathIdleTimer); return; }
-    hopDanno(danno, 1);
-    const poses = PATH_POSES[danno.dataset.kind] || PATH_POSES.lesson;
-    const index = (Number(danno.dataset.pose || 0) + 1) % poses.length;
-    danno.dataset.pose = index;
-    setTimeout(() => { danno.src = `danno/${poses[index]}.png`; }, 170);
-  }, 4200);
-}
 function afterPathRender(){
-  startPathIdle();
   const from = pathHopFrom;
   pathHopFrom = null;
   requestAnimationFrame(() => {
