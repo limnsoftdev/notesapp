@@ -13,7 +13,7 @@
   id: 'ap-world',
   title: 'AP World History: Modern',
   org: 'College Board',
-  blurb: 'Rulers, evidence and the writing skills to use them. Unit 3 is ready.',
+  blurb: 'Rulers, evidence and the writing skills to use them. Units 3 and 4 are ready.',
   unitPicker: true,
   examDate: 'May 6, 2027',
   disclaimer: 'Original practice written from College Board’s published course framework and rubrics. These are not real AP questions, and your score here doesn’t predict your AP score.',

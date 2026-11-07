@@ -169,7 +169,7 @@
 
   /* ---------- writing skills ---------- */
   {
-    id: 'apw-w-recall', unit: 'u3', track: 'write', title: 'Empty your head first', blurb: 'Recall before you read or write',
+    id: 'apw-w-recall', track: 'write', title: 'Empty your head first', blurb: 'Recall before you read or write',
     steps: [
       { type: 'teach', title: 'Why essays go blank', body: 'Most students who “know nothing” in an essay do know things. They just try to write and remember at the same time.\n\nSplit the jobs. Spend your first few minutes writing down **every name, event and term** you can recall, in no order at all. That’s your evidence bank. Then you only have to choose from it.' },
       { type: 'recall', prompt: 'Try it. The topic is **the Ottoman Empire, 1450 to 1750**. Type everything you can recall.', min: 4, terms: [
@@ -182,7 +182,7 @@
     ]
   },
   {
-    id: 'apw-w-saq', unit: 'u3', track: 'write', title: 'Three short answers, three points', blurb: 'Short answer: 20% of your score',
+    id: 'apw-w-saq', track: 'write', title: 'Three short answers, three points', blurb: 'Short answer: 20% of your score',
     steps: [
       { type: 'teach', title: 'Don’t write an essay', body: 'Each SAQ has three parts worth one point each. There’s no thesis, and no introduction. Graders are looking for a direct answer.\n\nUse **A-C-E**:\n**A**nswer the question in one sentence.\n**C**ite a specific example.\n**E**xplain how it answers the question, using “because” or “this shows.”\n\nOn the May 2027 exam, all three SAQs are required and each one comes with a source.' },
       { type: 'pick', prompt: 'The question says: **Describe ONE way the Ottomans recruited officials.** Which earns the point?', options: [
@@ -204,7 +204,7 @@
     ]
   },
   {
-    id: 'apw-w-thesis', unit: 'u3', track: 'write', title: 'A thesis that earns the point', blurb: 'DBQ and LEQ: 1 point',
+    id: 'apw-w-thesis', track: 'write', title: 'A thesis that earns the point', blurb: 'DBQ and LEQ: 1 point',
     steps: [
       { type: 'teach', title: 'Claim + reason', body: 'A thesis has to do more than repeat the prompt. The rubric asks for a **historically defensible claim that establishes a line of reasoning**.\n\nA useful formula: **Although [other side], [your claim] because [reason].**\n\nIt can be more than one sentence, but it has to be all in one place, in your introduction or your conclusion.' },
       { type: 'pick', prompt: 'Prompt: **Evaluate the extent to which gunpowder explains the expansion of land-based empires, 1450 to 1750.** Which thesis earns the point?', options: [
@@ -223,7 +223,7 @@
     ]
   },
   {
-    id: 'apw-w-context', unit: 'u3', track: 'write', title: 'Set the scene, get a point', blurb: 'DBQ and LEQ: 1 point',
+    id: 'apw-w-context', track: 'write', title: 'Set the scene, get a point', blurb: 'DBQ and LEQ: 1 point',
     steps: [
       { type: 'teach', title: 'Zoom out', body: 'The contextualization point asks you to **describe broader events or processes** connected to the prompt. They can happen before, during or after its dates.\n\nA quick test: **what was happening in the wider world that makes this topic make sense?** Write two or three sentences. The rubric says a phrase or a passing mention won’t earn it.' },
       { type: 'pick', prompt: 'Prompt: **Compare how rulers of two land-based empires consolidated power, 1450 to 1750.** Which earns contextualization?', options: [
@@ -241,7 +241,7 @@
     ]
   },
   {
-    id: 'apw-w-evidence', unit: 'u3', track: 'write', title: 'From fact to evidence', blurb: 'DBQ: 3 points. LEQ: 2 points',
+    id: 'apw-w-evidence', track: 'write', title: 'From fact to evidence', blurb: 'DBQ: 3 points. LEQ: 2 points',
     steps: [
       { type: 'teach', title: 'A fact isn’t evidence yet', body: 'A fact becomes evidence when you **connect it to your claim**. On both rubrics, the higher point requires using specifics to **support an argument**, not just mentioning them.\n\nUse this three-step sentence:\n**Fact:** what happened.\n**Detail:** the specifics.\n**So what:** how this proves your point.' },
       { type: 'pick', prompt: 'Claim: **Rulers used dependent elites to weaken rivals.** Which sentence uses the evidence best?', options: [
@@ -261,7 +261,7 @@
     ]
   },
   {
-    id: 'apw-w-sourcing', unit: 'u3', track: 'write', title: 'Who wrote this, and why?', blurb: 'DBQ: 1 point, and MCQ sources',
+    id: 'apw-w-sourcing', track: 'write', title: 'Who wrote this, and why?', blurb: 'DBQ: 1 point, and MCQ sources',
     steps: [
       { type: 'teach', title: 'Four questions for any document', body: 'For **at least two documents**, the DBQ rubric asks you to explain how or why one of these matters to your argument:\n\n**Point of view:** who is this person, and how does that shape what they say?\n**Purpose:** why was it created?\n**Historical situation:** what was going on at the time?\n**Audience:** who was it for?\n\nThe trap is stopping too soon. “Bossuet was a bishop” earns nothing. You have to say **why that matters**.' },
       { type: 'pick', source: 'bossuet', prompt: 'Which sentence earns credit for sourcing?', options: [
@@ -283,7 +283,7 @@
     ]
   },
   {
-    id: 'apw-w-reasoning', unit: 'u3', track: 'write', title: 'Structure and the complexity point', blurb: 'LEQ: 2 points. DBQ: 1 point',
+    id: 'apw-w-reasoning', track: 'write', title: 'Structure and the complexity point', blurb: 'LEQ: 2 points. DBQ: 1 point',
     steps: [
       { type: 'teach', title: 'Frame your argument', body: 'The LEQ’s reasoning point asks you to structure your essay using a historical reasoning process:\n\n**Comparison:** similarities **and** differences.\n**Causation:** why did this happen, and what resulted?\n**Continuity and change:** what changed, and what stayed the same?\n\nLet the prompt’s verb tell you which to use.' },
       { type: 'sort', prompt: 'Which reasoning does this prompt call for?', buckets: ['Comparison', 'Causation'], items: [
@@ -301,7 +301,7 @@
     ]
   },
   {
-    id: 'apw-w-dbq', unit: 'u3', track: 'write', title: 'A plan for the DBQ', blurb: 'DBQ: 25% of your score',
+    id: 'apw-w-dbq', track: 'write', title: 'A plan for the DBQ', blurb: 'DBQ: 25% of your score',
     steps: [
       { type: 'teach', title: 'Seven points, one hour', body: 'The DBQ has **7 points**: thesis (1), context (1), using documents (2), evidence beyond them (1), sourcing (1) and complexity (1).\n\nYou get 60 minutes including a 15-minute reading period. Use the reading time well: group the documents, mark which ones you’ll source, and plan your thesis **before** writing anything.' },
       { type: 'order', prompt: 'Put these steps in the best order.', items: ['Read the prompt and recall what you know', 'Read the documents, noting each one’s point', 'Group the documents by argument', 'Choose documents to source and outside evidence to add', 'Write your context and thesis', 'Write body paragraphs by group'], why: 'Grouping first is what stops a DBQ from being a list of summaries: Doc 1 says this, Doc 2 says that.' },

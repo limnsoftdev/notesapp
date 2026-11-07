@@ -1640,7 +1640,13 @@ body.sweeping .topbar{ position: relative; z-index: 31; }
 .brand-daneo span{ color: #FFFFFF; -webkit-text-stroke: 0; text-shadow: none; }
 
 /* the streak ring keeps its space in study, so the switch stays still when worlds change */
-.world-study .streak-btn{ display: flex !important; visibility: hidden; }
+.world-study .streak-btn{ display: flex !important; }
+.streak-btn{ transition: opacity .24s ease-out, transform .24s cubic-bezier(.2,0,0,1), visibility 0s; }
+/* keyed to the switch, which changes on the tap, not to the world, which changes under the sweep */
+.world-switch[data-world="study"] ~ .topbar-actions .streak-btn{
+  opacity: 0; transform: scale(.8); visibility: hidden;
+  transition: opacity .2s ease-out, transform .2s ease-in, visibility 0s linear .2s;
+}
 
 /* the smallest phones: the topbar has to tighten up for the settings button to stay on screen */
 @media (max-width: 359px){
@@ -1650,7 +1656,6 @@ body.sweeping .topbar{ position: relative; z-index: 31; }
   .world-switch button{ min-width: 44px; padding: 0 6px; }
   .streak-btn{ padding: 0 6px 0 2px; }
   .topbar-actions{ gap: 0; }
-  .world-study .streak-btn{ display: none !important; }
 }
 
 /* Danno stands on the first course card at the right, so the heading stays out of his column */

@@ -82,6 +82,8 @@ const VISUALS = {
     }).join('');
     return svgWrap(196, bars, 'Funding sources rising from personal savings up to venture capital');
   },
+  'silver-route': (s) => vChain(['Potosí', 'Acapulco', 'Manila', 'China'], s, 'Silver traveling from Potosí through Acapulco and Manila to China'),
+  'indian-ocean': (s) => vChain(['Before', 'Portugal', 'Dutch', 'And yet'], s, 'The Indian Ocean before and after European arrivals'),
   'reformation-chain': (s) => vChain(['Protest', 'Politics', 'Response', 'Result'], s, 'The Reformation moving from protest to politics, the Catholic response and the result'),
   // stage 0 shows them all, then each stage lights up one state
   'empire-bars': (s) => {

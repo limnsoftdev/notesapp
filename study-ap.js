@@ -208,7 +208,7 @@ const RESPONSE_LABEL = { saq: 'Short answer', leq: 'Long essay', dbq: 'Document-
 const responsesOf = (course, unit) => (course.responses || []).filter(def => def.unit === unit.id);
 const responseMax = (def) => rubricFor(def).length;
 function renderWriteTab(course, unit){
-  const skills = lessonsOf(course).filter(l => l.unit === unit.id && l.track === 'write');
+  const skills = lessonsOf(course).filter(l => l.track === 'write'); // the same skills serve every unit
   const doneCount = skills.filter(l => study.lessons[l.id] && study.lessons[l.id].done).length;
   const group = (type) => responsesOf(course, unit).filter(def => def.type === type).map(def => {
     const attempts = study.responses[def.id] || [];

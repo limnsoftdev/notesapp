@@ -185,15 +185,17 @@ function dannoSulk(){
 
 /* ---------- entrances ---------- */
 // The app opens on Danno asleep and nothing else (the page starts with .is-asleep, so the
-// first paint is already right). Tapping him *is* logging in: he wakes, the word 단어장
-// forms above him, and the wipe carries you straight into your log. The foyer's other
-// content (greeting, quick rep, buttons) only shows when you come back via the topbar logo.
+// first paint is already right). He wakes by himself straight away, the word 단어장 forms above
+// him, and the wipe carries you into your log, with nothing to tap. The foyer's other content
+// (greeting, quick rep, buttons) only shows when you come back via the topbar logo.
 //
-// Beats (seconds after the tap):
+// Beats, before WAKE_SPEED shortens them to about half:
 //   0.00  poke: he squashes and rebounds
 //   0.30  단 · 어 · 장 rise out of a blur, 0.14s apart           (each 0.6s, done ≈1.2)
 //   0.75  he wakes and hops to his feet                           (lands ≈1.45)
 //   1.85  wipe out of Danno into the log                          (≈0.9s)
+const WAKE_SPEED = 1.9;
+const WAKE_DELAY_MS = 150; // long enough to see him asleep
 let waking = false;
 // true when danno was put back to sleep because you came back to the app (not a fresh load):
 // waking him then returns you to whatever you were doing instead of jumping to the log
@@ -224,7 +226,14 @@ function wakeUp(){
       const resumed = resumedFromAway;
       resumedFromAway = false;
       closeFoyer(dannoWrap, () => { if(!resumed) openLastWorld(); });
-    }, 1.85);
+    }, 1.85)
+    .timeScale(WAKE_SPEED);
+}
+// the study scripts load after this one and the wake-up ends in them, so it has to wait for them
+function wakeSoon(){
+  const start = () => setTimeout(wakeUp, WAKE_DELAY_MS);
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
 }
 // coming back via the topbar logo: he's already awake, so just a quick entrance
 function shortEntrance(){
@@ -250,13 +259,23 @@ function openFoyer(){
   renderFoyer();
   foyerEl.hidden = false;
   document.documentElement.classList.add('foyer-open');
-  if(!motionOk){ foyerEl.classList.remove('is-asleep'); setPose('stand'); return; }
+  if(!motionOk){
+    if(foyerEl.classList.contains('is-asleep')){
+      // nothing to watch without motion, so go straight in
+      foyerEl.classList.remove('is-asleep');
+      const enter = () => closeFoyer(dannoWrap, openLastWorld);
+      if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', enter, { once: true });
+      else enter();
+    }
+    setPose('stand');
+    return;
+  }
   gsap.set(foyerEl, { opacity: 1 });
   gsap.set('.foyer-inner', { opacity: 1, y: 0 });
   gsap.set('#foyerSpot', { opacity: 0, scale: .8 });
   if(foyerEl.classList.contains('is-asleep')){
     setPose('knees');
-    startIdle();
+    wakeSoon();
   }else{
     shortEntrance();
   }
@@ -319,10 +338,9 @@ function landOnInput(){
 }
 brandHome.addEventListener('click', openFoyer);
 
-// tap danno: asleep, it wakes him and opens the app; awake, he hops or peeks
+// tap danno on the welcome screen and he hops or peeks
 dannoWrap.addEventListener('click', () => {
-  if(!motionOk || leaving || waking) return;
-  if(foyerEl.classList.contains('is-asleep')) return wakeUp();
+  if(!motionOk || leaving || waking || foyerEl.classList.contains('is-asleep')) return;
   (Math.random() < .5 ? dannoHop : dannoPeek)();
 });
 dannoWrap.addEventListener('keydown', (e) => {
