@@ -5,6 +5,9 @@
 //   order:  put items in sequence        match: pair two columns
 //   sort:   drop each item into a bucket  q: a question from the course's bank
 //   widget: an interactive tool you have to use to continue
+//   pick:   choose an answer, each option explaining itself: [text, isRight, why]
+//   recall: type what you remember, then see which key terms you got: [label, ...terms]
+// A teach step can show a course image (`image`), and a pick step can show a source (`source`).
 // Visuals are code rather than data, so course files stay plain text and can't inject markup.
 // Loaded after study.js and uses its globals.
 
@@ -79,6 +82,24 @@ const VISUALS = {
     }).join('');
     return svgWrap(196, bars, 'Funding sources rising from personal savings up to venture capital');
   },
+  'reformation-chain': (s) => vChain(['Protest', 'Politics', 'Response', 'Result'], s, 'The Reformation moving from protest to politics, the Catholic response and the result'),
+  // stage 0 shows them all, then each stage lights up one state
+  'empire-bars': (s) => {
+    const START = 1400, END = 1800;
+    const X = year => 78 + (Math.max(START, Math.min(END, year)) - START) / (END - START) * 254;
+    const rows = [['Ottoman', 1400, 1800, 1], ['Safavid', 1501, 1736, 2], ['Mughal', 1526, 1800, 3], ['Ming', 1400, 1644, 4], ['Qing', 1644, 1800, 4], ['Russia', 1400, 1800, 5], ['Songhai', 1464, 1591, 6]];
+    const lanes = [['Ottoman', 1], ['Safavid', 2], ['Mughal', 3], ['Ming / Qing', 4], ['Russia', 5], ['Songhai', 6]];
+    const laneY = stage => 28 + (stage - 1) * 28;
+    const bars = rows.map(([name, from, to, stage]) => {
+      const on = s === stage;
+      const x = X(from), w = X(to) - x;
+      return `<rect class="v-box${on ? ' on' : ''}" x="${x}" y="${laneY(stage)}" width="${w}" height="20" rx="6"/>
+        ${stage === 4 ? `<text class="v-sub${on ? ' on' : ''}" x="${x + w / 2}" y="${laneY(stage) + 14}" text-anchor="middle">${name}</text>` : ''}`;
+    }).join('');
+    const labels = lanes.map(([name, stage]) => `<text class="v-sub${s === stage ? ' strong' : ''}" x="72" y="${laneY(stage) + 14}" text-anchor="end">${name}</text>`).join('');
+    const years = [1450, 1600, 1750].map(year => `<text class="v-sub" x="${X(year)}" y="16" text-anchor="middle">${year}</text>`).join('');
+    return svgWrap(204, `<rect class="v-band" x="${X(1450)}" y="20" width="${X(1750) - X(1450)}" height="176" rx="6"/>${bars}${labels}${years}`, 'A timeline of the Ottoman, Safavid, Mughal, Ming, Qing, Russian and Songhai states from 1400 to 1800');
+  },
   'risk-matrix': (s) => {
     const cells = [
       ['Reduce', 'often, but small', 66, 16],
@@ -147,6 +168,8 @@ function freshStepState(step, courseId){
     case 'match': return { left: shuffled(step.pairs.map((_, i) => i)), right: shuffled(step.pairs.map((_, i) => i)), sel: null, done: [], miss: null };
     case 'sort': return { queue: shuffled(step.items.map((_, i) => i)), last: null };
     case 'q': return { order: shuffled([0, 1, 2, 3]), picked: null };
+    case 'pick': return { order: shuffled(step.options.map((_, i) => i)), picked: null };
+    case 'recall': return { text: '', checked: false, hits: [] };
     case 'widget': return WIDGETS[step.widget].init();
     default: return {};
   }
@@ -165,6 +188,8 @@ function stepCanContinue(step, st){
     case 'match': return st.done.length === step.pairs.length;
     case 'sort': return st.queue.length === 0;
     case 'q': return st.picked !== null;
+    case 'pick': return st.picked !== null;
+    case 'recall': return st.checked;
     case 'widget': return st.ok;
     default: return true;
   }
@@ -174,7 +199,30 @@ function renderStepBody(step, st){
   switch(step.type){
     case 'teach':
       return `${step.visual ? VISUALS[step.visual](step.stage || 0) : ''}
+        ${step.image ? renderImage(courseById(lesson.courseId), step.image) : ''}
         <p class="lesson-body">${lessonText(step.body)}</p>`;
+    case 'pick': {
+      const opts = st.order.map(index => {
+        const [text, isRight] = step.options[index];
+        let state = '', mark = ICON.dot;
+        if(st.picked !== null){
+          if(isRight){ state = ' is-right'; mark = ICON.check; }
+          else if(index === st.picked){ state = ' is-wrong'; mark = ICON.cross; }
+          else state = ' is-dim';
+        }
+        return `<button class="quiz-option${state}" type="button" data-act="l-pick" data-option="${index}"${st.picked !== null ? ' disabled' : ''}><span class="option-mark">${mark}</span><span class="option-text">${escapeHtml(text)}</span></button>`;
+      }).join('');
+      return `${step.source ? renderSource(courseById(lesson.courseId), step.source) : ''}<div class="quiz-options">${opts}</div>`;
+    }
+    case 'recall': {
+      if(!st.checked){
+        return `<label class="write-field"><span class="sr-only">What you remember</span>
+          <textarea class="write-area" id="recallText" rows="6" placeholder="Names, events, terms. Any order. Spelling doesn’t matter much.">${escapeHtml(st.text)}</textarea></label>
+          <button class="stage-btn primary wide" type="button" data-act="l-recall">check what I remembered</button>`;
+      }
+      return `<p class="recall-count"><b>${st.hits.length}</b> of ${step.terms.length} key terms</p>
+        <ul class="recall-terms">${step.terms.map(([label], index) => `<li class="${st.hits.includes(index) ? 'hit' : 'miss'}">${st.hits.includes(index) ? ICON.check : ICON.cross}<span>${escapeHtml(label)}</span></li>`).join('')}</ul>`;
+    }
     case 'stages': {
       const stage = step.stages[st.s];
       return `${VISUALS[step.visual](st.s)}
@@ -233,7 +281,8 @@ function renderStepBody(step, st){
         }
         return `<button class="quiz-option${state}" type="button" data-act="l-answer" data-option="${optionIndex}"${st.picked !== null ? ' disabled' : ''}><span class="option-mark">${mark}</span><span class="option-text">${escapeHtml(item.options[optionIndex])}</span></button>`;
       }).join('');
-      return `<p class="lesson-question">${escapeHtml(item.text)}</p>
+      return `${item.source ? renderSource(courseById(lesson.courseId), item.source) : ''}
+        <p class="lesson-question">${escapeHtml(item.text)}</p>
         <div class="quiz-options">${opts}</div>`;
     }
     case 'widget':
@@ -243,7 +292,7 @@ function renderStepBody(step, st){
       return '';
   }
 }
-const STEP_KICKER = { order: 'put it in order', match: 'match them up', sort: 'sort them', q: 'your turn', widget: 'try it', stages: 'step through it', teach: 'learn' };
+const STEP_KICKER = { order: 'put it in order', match: 'match them up', sort: 'sort them', q: 'your turn', pick: 'your turn', recall: 'from memory', widget: 'try it', stages: 'step through it', teach: 'learn' };
 
 // answering or finishing an activity brings up the result sheet; reading steps keep the plain button
 function lessonSheet(step, st){
@@ -252,7 +301,9 @@ function lessonSheet(step, st){
   const label = last ? 'finish lesson' : 'continue';
   const why = step.type === 'q'
     ? escapeHtml(ITEM_BY_KEY.get(`${lesson.courseId}:${step.ref}`).why)
-    : lessonText(step.why || (st.last && st.last.text) || '');
+    : step.type === 'pick'
+      ? lessonText(step.options[st.picked][2] || '')
+      : lessonText(step.why || (st.last && st.last.text) || '');
   return resultSheet({
     good: st.sheet.good,
     title: st.sheet.title,
@@ -297,6 +348,8 @@ function playLessonFx(){
   (fx.pop || []).forEach(selector => popEl(studyView.querySelector(selector)));
   if(fx.burst) burstAt(studyView.querySelector(fx.burst));
   if(fx.shake) shakeEl(studyView.querySelector(fx.shake));
+  if(fx.slide) slideIn(studyView.querySelector(fx.slide.selector), fx.slide.dir);
+  if(fx.stagger) staggerIn(studyView.querySelectorAll(fx.stagger));
   if(fx.answer) playAnswerFx(fx.answer.good, lesson.combo);
 }
 function renderLessonDone(){
@@ -334,9 +387,10 @@ function lessonAction(el){
   switch(el.dataset.act){
     case 'l-exit': {
       const courseId = lesson.courseId;
-      if(lesson.finished) pathHopFrom = lesson.def.id;
+      const track = lesson.def.track;
+      if(lesson.finished && !track) pathHopFrom = lesson.def.id;
       lesson = null;
-      showScreen({ name: 'course', courseId, tab: 'learn' });
+      showScreen({ name: 'course', courseId, tab: track || 'learn' }, 'back');
       return;
     }
     case 'l-next': {
@@ -354,9 +408,9 @@ function lessonAction(el){
       });
       return;
     }
-    case 'l-stage': st.s += Number(el.dataset.dir); break;
-    case 'l-place': st.placed.push(Number(el.dataset.item)); st.wrongAt = null; break;
-    case 'l-unplace': st.placed.splice(Number(el.dataset.pos), 1); st.wrongAt = null; break;
+    case 'l-stage': st.s += Number(el.dataset.dir); lesson.fx = { slide: { selector: '.stage-text', dir: Number(el.dataset.dir) } }; break;
+    case 'l-place': st.placed.push(Number(el.dataset.item)); st.wrongAt = null; lesson.fx = { pop: [`.order-slots > :nth-child(${st.placed.length})`] }; break;
+    case 'l-unplace': st.placed.splice(Number(el.dataset.pos), 1); st.wrongAt = null; lesson.fx = { pop: ['.chip-pool'] }; break;
     case 'l-check-order': {
       const wrong = st.placed.findIndex((item, pos) => item !== pos);
       if(wrong === -1){ st.solved = true; st.wrongAt = null; }
@@ -370,7 +424,7 @@ function lessonAction(el){
     }
     case 'l-match': {
       const item = Number(el.dataset.item);
-      if(el.dataset.side === 'a'){ st.sel = item; st.miss = null; break; }
+      if(el.dataset.side === 'a'){ st.sel = item; st.miss = null; lesson.fx = { pop: ['.match-card.selected'] }; break; }
       if(st.sel === null){ shakeEl(studyView.querySelector('.match-grid > div:first-child')); return; }
       if(st.sel === item){
         st.done.push(item);
@@ -400,6 +454,37 @@ function lessonAction(el){
         lesson.fx = { shake: '.sort-card' };
       }
       st.last = { right, text: right ? (note || `Yes: **${step.buckets[bucket]}**.`) : `Not quite. "${text}" doesn't belong there. Try the other one.` };
+      break;
+    }
+    case 'l-pick': {
+      if(st.picked !== null) return;
+      st.picked = Number(el.dataset.option);
+      const right = !!step.options[st.picked][1];
+      if(right){
+        lesson.combo = (lesson.combo || 0) + 1;
+        markStudied();
+      }else{
+        lesson.mistakes++;
+        lesson.combo = 0;
+      }
+      st.sheet = { good: right, title: pickOne(right ? PRAISE : ENCOURAGE) };
+      lesson.fx = { answer: { good: right } };
+      saveStudy();
+      break;
+    }
+    case 'l-recall': {
+      if(st.checked) return;
+      const text = normalizeAnswer(st.text);
+      if(wordCount(text) === 0){ showToast('type anything you remember first'); shakeEl(document.getElementById('recallText')); return; }
+      st.hits = step.terms.flatMap(([, ...terms], index) => (termsFound(text, terms).length ? [index] : []));
+      st.checked = true;
+      const good = st.hits.length >= step.min;
+      // remembering less than you hoped isn't a mistake: it's what shows you what to study
+      lesson.combo = good ? (lesson.combo || 0) + 1 : 0;
+      st.sheet = { good, title: good ? pickOne(PRAISE) : 'now you know what to study' };
+      lesson.fx = { answer: { good }, stagger: '.recall-terms li' };
+      markStudied();
+      saveStudy();
       break;
     }
     case 'l-answer': {
@@ -440,6 +525,7 @@ function finishLesson(){
 
 // sliders update in place: re-rendering would drop the thumb out from under your finger
 studyView.addEventListener('input', (e) => {
+  if(e.target.id === 'recallText' && lesson){ lesson.st.text = e.target.value; return; }
   const key = e.target.dataset.be;
   if(!key || !lesson) return;
   const step = lesson.def.steps[lesson.i];

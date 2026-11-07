@@ -13,7 +13,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261106t">
+<link rel="preload" href="fonts/TitanOne-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="styles.css?v=20261107l">
 </head>
 <body>
 
@@ -27,9 +28,13 @@
 
   <header class="topbar">
     <button class="brand-home" id="brandHome" type="button" aria-label="back to the welcome screen">
-      <img class="brand-logo" src="logo2.png" alt="단어장 word log">
+      <span class="brand-mark" id="brandMark">
+        <img class="brand-logo" src="logo2.png" alt="단어장 word log">
+        <span class="brand-daneo" aria-hidden="true"><span>dan</span><span>eo</span></span>
+      </span>
     </button>
-    <div class="world-switch" id="worldSwitch" role="group" aria-label="choose what to work on">
+    <div class="world-switch" id="worldSwitch" data-world="words" role="group" aria-label="choose what to work on">
+      <i class="world-thumb" aria-hidden="true"></i>
       <button type="button" data-world="words" class="active" aria-pressed="true">단어</button>
       <button type="button" data-world="study" aria-pressed="false">study</button>
     </div>
@@ -66,19 +71,39 @@
     </button>
   </nav>
 
+  <div class="voice-sheet" id="voiceSheet" role="dialog" aria-modal="true" aria-label="say a word" hidden></div>
   <section id="logView">
     <section class="add-panel">
-      <div class="field-row">
-        <label class="sr-only" for="phraseInput">add a word</label>
-        <input id="phraseInput" type="text" placeholder="add a word — 한국어 or english" autocomplete="off" spellcheck="false">
-        <button id="addBtn" class="btn-primary" type="button" aria-label="add word">
+      <div class="voice-hero" id="voiceHero" hidden>
+        <div class="voice-arch" aria-hidden="true">
+          <svg viewBox="0 0 2400 340" width="2400" height="340" focusable="false">
+            <defs><linearGradient id="voiceArchFill" gradientUnits="userSpaceOnUse" x1="0" y1="20" x2="0" y2="340"><stop class="arch-stop-top" offset="0"/><stop class="arch-stop-end" offset="1"/></linearGradient></defs>
+            <path class="arch-fill" d="M0 138H1104.1A18 18 0 0 0 1121.7 116.3A80 80 0 1 1 1278.3 116.3A18 18 0 0 0 1295.9 138H2400V340H0Z" fill="url(#voiceArchFill)"/>
+            <path class="arch-line" d="M0 138H1104.1A18 18 0 0 0 1121.7 116.3A80 80 0 1 1 1278.3 116.3A18 18 0 0 0 1295.9 138H2400"/>
+          </svg>
+        </div>
+        <div class="voice-dock">
+          <button class="voice-side" id="voiceLangBtn" type="button"><span class="voice-side-glyph" id="voiceLangGlyph" lang="ko">한</span></button>
+          <button class="voice-mic" id="voiceMic" type="button" aria-label="tap and say a word"><svg viewBox="0 0 24 24" width="46" height="46" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="currentColor"/><path d="M5 11.5a7 7 0 0 0 14 0M12 18.5v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+          <button class="voice-side" id="typeToggle" type="button" aria-label="type a word instead" aria-expanded="false" aria-controls="typeReveal"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="3"/><path d="M6.5 10h.01M10.2 10h.01M13.8 10h.01M17.5 10h.01M8 14h8"/></svg></button>
+        </div>
+        <p class="voice-title" id="voiceTitle" aria-live="polite">say a word in 한국어</p>
+      </div>
+      <div class="type-reveal open" id="typeReveal">
+        <div class="type-reveal-inner">
+          <div class="field-row">
+            <label class="sr-only" for="phraseInput">add a word</label>
+            <input id="phraseInput" type="text" placeholder="add a word — 한국어 or english" autocomplete="off" spellcheck="false">
+            <button id="addBtn" class="btn-primary" type="button" aria-label="add word">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
         </button>
-      </div>
-      <div class="field-row secondary" id="manualRow" hidden>
+          </div>
+          <div class="field-row secondary" id="manualRow" hidden>
         <input id="meaningInput" type="text" placeholder="english meaning" aria-label="english meaning">
         <input id="koreanInput" type="text" placeholder="한국어" class="ko" aria-label="korean">
         <input id="romInput" type="text" placeholder="romanization" aria-label="romanization">
+      </div>
+        </div>
       </div>
       <div class="hint" id="statusHint" aria-live="polite"></div>
     </section>
@@ -358,14 +383,20 @@
 <div class="foyer-wipe foyer-wipe-paper" id="wipePaper" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="app.js?v=20261106t"></script>
-<script src="foyer.js?v=20261106t"></script>
-<script src="courses/computer-problem-solving.js?v=20261106t"></script>
-<script src="courses/entrepreneurship.js?v=20261106t"></script>
-<script src="courses/lessons-cps.js?v=20261106t"></script>
-<script src="courses/lessons-ent.js?v=20261106t"></script>
-<script src="study.js?v=20261106t"></script>
-<script src="study-lessons.js?v=20261106t"></script>
-<script src="study-streak.js?v=20261106t"></script>
+<script src="app.js?v=20261107l"></script>
+<script src="foyer.js?v=20261107l"></script>
+<script src="courses/computer-problem-solving.js?v=20261107l"></script>
+<script src="courses/entrepreneurship.js?v=20261107l"></script>
+<script src="courses/lessons-cps.js?v=20261107l"></script>
+<script src="courses/lessons-ent.js?v=20261107l"></script>
+<script src="courses/ap-world.js?v=20261107l"></script>
+<script src="courses/lessons-apw.js?v=20261107l"></script>
+<script src="study.js?v=20261107l"></script>
+<script src="study-lessons.js?v=20261107l"></script>
+<script src="study-streak.js?v=20261107l"></script>
+<script src="study-grading.js?v=20261107l"></script>
+<script src="study-ap.js?v=20261107l"></script>
+<script src="fx.js?v=20261107l"></script>
+<script src="voice.js?v=20261107l"></script>
 </body>
 </html>

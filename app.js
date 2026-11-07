@@ -580,7 +580,9 @@ function openManualRow(korean, rom, meaning){
   };
 }
 
-function commitEntry(korean, romanized, meaning){
+function commitEntry(korean, romanized, meaning, originEl){
+  const before = captureLogPositions();
+  meaning = meaning.trim().replace(/[,，]+$/, ''); // the translator can leave a trailing comma ("Hi,")
   const category = autoCategorize(meaning);
   const entry = {
     id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
@@ -593,9 +595,13 @@ function commitEntry(korean, romanized, meaning){
   phraseInput.value = '';
   manualRow.hidden = true;
   flashHint(`added to ${category}`, false, true);
+  // the new word has to be visible to land, so a filter or search that would hide it gives way
+  if(activeCategory !== 'all' && activeCategory !== category) activeCategory = 'all';
+  if(searchTerm){ searchTerm = ''; searchInput.value = ''; }
   renderChips();
   renderLog();
   updateDueDot();
+  landEntry(entry, originEl || phraseInput.closest('.field-row'), before);
 }
 
 function flashHint(msg, isError, isOk){

@@ -1459,3 +1459,344 @@ html.foyer-open, html.foyer-open body{ overflow:hidden; }
 .foyer.is-waking .recall-rate,
 .foyer.is-waking .foyer-actions,
 .foyer.is-waking .foyer-stats{ display: none; }
+
+/* ---------- AP courses: units, sources, cards and writing (study-ap.js) ---------- */
+.course-tabs.five{ grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; }
+.course-tabs.five .course-tab{ font-size: 13px; padding: 0; }
+.unit-row.soon{ opacity: .6; }
+.unit-row .unit-weight{ display:block; margin: 2px 0 8px; }
+.unit-row.soon .unit-weight{ margin-bottom: 0; }
+.exam-parts summary, .model-answer summary, .doc-list summary{ font-size: 14px; font-weight: 600; cursor: pointer; }
+.exam-table{ margin-top: 12px; display:flex; flex-direction:column; gap: 12px; }
+.exam-row{ display:flex; flex-direction:column; gap: 1px; font-size: 13px; line-height: 1.4; color: var(--muted); }
+.exam-row b{ font-size: 14px; font-weight: 600; color: var(--ink); }
+.exam-num{ font-variant-numeric: tabular-nums; }
+
+.src{ margin: 12px 0 0; }
+.src-heading{ margin: 0 0 6px; font-size: 13px; font-weight: 700; }
+.src-text{ margin: 0; padding: 12px 14px; border-left: 3px solid var(--gold); border-radius: 0 12px 12px 0; background: var(--field); font-size: 14px; line-height: 1.55; text-wrap: pretty; }
+.src-cite{ margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+.src-figure{ margin: 12px 0 0; }
+.src-img{ display:block; width: 100%; max-height: 340px; object-fit: contain; border-radius: 12px; background: var(--field); }
+.src-figure figcaption{ margin-top: 6px; display:flex; flex-direction:column; gap: 2px; font-size: 12px; line-height: 1.45; color: var(--muted); }
+.src-credit{ color: var(--muted); font-size: 11px; text-decoration: underline; text-underline-offset: 2px; }
+.src + .quiz-question, .src + .lesson-question{ margin-top: 14px; }
+.lesson-card .src-figure + .lesson-body{ margin-top: 12px; }
+.v-band{ fill: var(--gold); opacity: .16; }
+
+.card-grid{ display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.card-tile{
+  min-width: 0; padding: 6px 6px 8px; border: 0; border-radius: 14px; background: var(--card); color: var(--ink);
+  box-shadow: var(--card-shadow); cursor: pointer; display:flex; flex-direction:column; gap: 6px; text-align: left;
+  transition: transform .12s ease;
+}
+.card-tile:active{ transform: scale(.97); }
+.card-tile img{ display:block; width: 100%; aspect-ratio: 1; object-fit: cover; object-position: top; border-radius: 10px; background: var(--field); }
+.card-tile-name{ min-height: 2.5em; font-size: 12px; line-height: 1.25; font-weight: 600; }
+.card-dots{ display:flex; gap: 3px; }
+.card-dots i{ width: 7px; height: 7px; border-radius: 50%; background: var(--dot-off); }
+.card-dots i.on{ background: var(--dot-on); }
+
+.cardrun-card .src-figure{ margin-top: 8px; }
+.cardrun-card.shown .src-img{ max-height: 150px; }
+.cardrun-clue{ margin: 12px 0 0; font-size: 16px; line-height: 1.4; font-weight: 600; text-wrap: pretty; }
+.cardrun-answer{ margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); animation: lessonIn .25s var(--ease-out); }
+.cardrun-name{ margin: 0; font-size: 22px; line-height: 1.2; font-weight: 700; }
+.cardrun-when{ margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.cardrun-fact{ margin: 10px 0 0; font-size: 15px; line-height: 1.45; }
+.cardrun-use-label{ margin: 12px 0 2px; font-size: 12px; font-weight: 700; color: var(--accent); }
+.cardrun-use{ margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--new-bg); font-size: 14px; line-height: 1.45; }
+.results-line.on-ground{ color: var(--on-ground); }
+
+.unit-row.skill-row{ flex-direction: row; align-items: center; gap: 12px; text-align: left; }
+.skill-check{
+  width: 24px; height: 24px; flex-shrink: 0; border: 2px solid var(--dot-off); border-radius: 50%;
+  display:flex; align-items:center; justify-content:center; color: var(--gold-ink);
+}
+.skill-check.on{ border-color: var(--gold); background: var(--gold); }
+.skill-text{ min-width: 0; display:flex; flex-direction:column; gap: 1px; }
+.skill-text .unit-weight{ margin: 0; }
+.write-group{ margin: 8px 0 2px; font-size: 12px; font-weight: 700; color: var(--muted); }
+
+.write-kind{ flex: 1; margin: 0; font-size: 14px; font-weight: 600; color: var(--on-ground); }
+.write-card .lesson-title{ margin-top: 0; }
+.write-prompt{ margin: 12px 0 0; font-size: 15px; line-height: 1.5; font-weight: 600; text-wrap: pretty; }
+.write-checklist{ margin: 10px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.write-field{ display:block; margin-top: 14px; }
+.write-label{ display:block; margin-bottom: 6px; font-size: 14px; line-height: 1.4; font-weight: 600; text-wrap: pretty; }
+.write-area{
+  display:block; width: 100%; box-sizing: border-box; padding: 12px; border: 2px solid transparent; border-radius: 12px;
+  background: var(--field); color: var(--ink); font: inherit; font-size: 16px; line-height: 1.5; resize: vertical; outline: none;
+}
+.write-area:focus{ border-color: var(--dot-on); }
+.write-count{ margin: 6px 2px 0; font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.doc-list{ margin-top: 14px; padding: 12px; border-radius: 14px; border: 1px solid var(--line); }
+.doc-list .src:first-of-type{ margin-top: 12px; }
+.doc-list .src + .src{ margin-top: 18px; }
+.recall-count{ margin: 12px 0 8px; font-size: 15px; }
+.recall-count b{ font-size: 24px; font-weight: 700; }
+.recall-terms{ margin: 0; padding: 0; list-style: none; display:flex; flex-direction:column; gap: 6px; font-size: 14px; }
+.recall-terms li{ display:flex; align-items:center; gap: 8px; }
+.recall-terms li.hit svg{ color: var(--accent); }
+.recall-terms li.miss{ color: var(--muted); }
+.recall-terms li.miss svg{ opacity: .6; }
+
+.grade-head .results-line{ font-size: 13px; font-weight: 500; color: var(--muted); }
+.grade-list{ display:flex; flex-direction:column; gap: 18px; }
+.grade-row + .grade-row{ padding-top: 18px; border-top: 1px solid var(--line); }
+.grade-group{ margin: 0; font-size: 12px; font-weight: 700; color: var(--accent); }
+.grade-label{ margin: 2px 0 0; font-size: 15px; line-height: 1.35; font-weight: 600; text-wrap: pretty; }
+.grade-detail{ margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.grade-answer{ margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--field); font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.grade-answer.full{ margin-top: 12px; }
+.grade-note{ margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--ink-2); }
+.grade-toggle{ margin-top: 10px; display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.grade-toggle button{
+  min-height: 44px; border: 2px solid transparent; border-radius: 12px; background: var(--field); color: var(--ink-2); cursor: pointer;
+  display:flex; align-items:center; justify-content:center; gap: 6px; font-size: 14px; font-weight: 600;
+}
+.grade-toggle button:disabled{ opacity: .4; cursor: default; }
+.grade-toggle button.on.yes{ border-color: var(--gold); background: var(--fade-bg); color: var(--ink); }
+.grade-toggle button.on.no{ border-color: var(--dot-off); color: var(--ink); }
+.model-answer p, .model-answer ul{ margin: 10px 0 0; font-size: 14px; line-height: 1.5; }
+.model-answer ul{ padding-left: 18px; }
+.model-answer li + li{ margin-top: 6px; }
+
+/* ---------- feedback and the study world's identity (fx.js) ---------- */
+@font-face{
+  font-family: 'Titan One'; src: url('fonts/TitanOne-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+button:disabled{ pointer-events: none; }
+
+/* the logo: both versions share a cell, so nothing shifts when it changes */
+.brand-mark{ position: relative; display: grid; align-items: center; justify-items: start; min-height: 30px; }
+.brand-mark > .brand-logo, .brand-mark > .brand-daneo{ grid-area: 1 / 1; }
+.brand-daneo{
+  display: inline-flex; font-family: 'Titan One', 'Inter', sans-serif; font-size: 27px; line-height: 30px; letter-spacing: .01em;
+  visibility: hidden;
+}
+.brand-daneo span, .brand-part{
+  color: #FFFFFF; -webkit-text-stroke: 5px #20232B; paint-order: stroke fill;
+  text-shadow: 0 2px 0 #20232B;
+}
+.world-study .brand-daneo{ visibility: visible; }
+.world-study .brand-logo{ visibility: hidden; }
+.brand-mark.morphing .brand-logo, .brand-mark.morphing .brand-daneo{ visibility: hidden; }
+.brand-fx{ position: absolute; inset: 0; perspective: 240px; pointer-events: none; }
+.brand-slice{ position: absolute; top: 0; height: 100%; background-image: url('logo2.png'); background-repeat: no-repeat; transform-origin: 50% 70%; }
+.brand-part{ position: absolute; top: 0; display: block; font-family: 'Titan One', 'Inter', sans-serif; font-size: 27px; line-height: 30px; letter-spacing: .01em; transform-origin: 50% 60%; }
+
+/* the world switch has one thumb that slides between its two halves */
+.world-switch{ position: relative; display: grid; grid-template-columns: 1fr 1fr; }
+.world-switch button{ position: relative; z-index: 1; }
+.world-switch button.active{ background: transparent; }
+.world-thumb{
+  position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 4px); border-radius: 17px; background: var(--tab-on);
+  transition: transform .34s cubic-bezier(.34,1.56,.64,1), background-color .3s ease;
+}
+.world-switch[data-world="study"] .world-thumb{ transform: translateX(calc(100% + 2px)); }
+
+/* the color spreading between worlds; the topbar stays above it */
+.world-sweep{ position: fixed; z-index: 30; border-radius: 50%; pointer-events: none; transform: scale(0); }
+body.sweeping .topbar{ position: relative; z-index: 31; }
+
+/* course tabs share one sliding thumb too */
+.course-tabs{ --tab-gap: 4px; position: relative; }
+.course-tabs.five{ --tab-gap: 2px; }
+.course-tab{ position: relative; z-index: 1; }
+.course-tab.active{ background: transparent; }
+.tab-thumb{
+  --n: 3; --i: 0;
+  position: absolute; top: 4px; bottom: 4px; left: 4px; border-radius: 12px; background: var(--tab-on);
+  width: calc((100% - 8px - (var(--n) - 1) * var(--tab-gap)) / var(--n));
+  transform: translateX(calc(var(--i) * (100% + var(--tab-gap))));
+}
+.tab-body{ display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.study-screen.still{ animation: none; }
+
+/* flying card */
+.card-flying{ position: fixed; z-index: 45; margin: 0; pointer-events: none; overflow: hidden; }
+
+/* moving backward through questions */
+@keyframes lessonBack{ from{ opacity: 0; transform: translateX(-24px); } }
+.quiz-card.enter.back{ animation-name: lessonBack; }
+
+/* readable small text on colored buttons */
+.study-btn.gold span{ color: var(--gold-ink); opacity: .85; }
+.study-btn.solid span{ color: #FFFFFF; opacity: .9; }
+.study-btn.plain span{ color: var(--on-ground-dim); }
+
+.grade-row.needs-you{ border-radius: 10px; outline: 2px solid var(--gold); outline-offset: 6px; }
+.study-btn.is-working{ animation: workingPulse .9s ease-in-out infinite; }
+@keyframes workingPulse{ 50%{ filter: brightness(1.12); transform: scale(.985); } }
+
+/* one stroke under the whole word, so a letter's outline never cuts into the letter beside it */
+.brand-daneo{ position: relative; isolation: isolate; }
+.brand-daneo::before{
+  content: 'daneo'; position: absolute; left: 0; top: 0; z-index: -1; color: #20232B;
+  -webkit-text-stroke: 5px #20232B; text-shadow: 0 2px 0 #20232B;
+}
+.brand-daneo span{ color: #FFFFFF; -webkit-text-stroke: 0; text-shadow: none; }
+
+/* the streak ring keeps its space in study, so the switch stays still when worlds change */
+.world-study .streak-btn{ display: flex !important; visibility: hidden; }
+
+/* the smallest phones: the topbar has to tighten up for the settings button to stay on screen */
+@media (max-width: 359px){
+  .brand-mark{ min-height: 26px; }
+  .brand-logo{ height: 26px; }
+  .brand-daneo, .brand-part{ font-size: 22px; line-height: 26px; }
+  .world-switch button{ min-width: 44px; padding: 0 6px; }
+  .streak-btn{ padding: 0 6px 0 2px; }
+  .topbar-actions{ gap: 0; }
+  .world-study .streak-btn{ display: none !important; }
+}
+
+/* Danno stands on the first course card at the right, so the heading stays out of his column */
+.study-hero{ padding-right: 84px; }
+
+.voice-lang{
+  --thumb: 0; position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; gap: 2px; border-radius: 18px; background: var(--chip);
+}
+.voice-lang[data-lang="en-US"]{ --thumb: 1; }
+.voice-lang button{
+  position: relative; z-index: 1; min-width: 74px; min-height: 36px; padding: 0 12px; border: 0; border-radius: 15px; background: transparent; cursor: pointer;
+  color: var(--on-ground); font-size: 13px; font-weight: 600; transition: color .2s ease;
+}
+.voice-lang button.active{ color: var(--tab-on-ink); }
+.voice-lang-thumb{
+  position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 4px); border-radius: 15px; background: var(--tab-on);
+  transform: translateX(calc(var(--thumb) * (100% + 2px)));
+  transition: transform .32s cubic-bezier(.34,1.56,.64,1);
+}
+
+.voice-sheet{
+  position: fixed; inset: 0; z-index: 42; overflow-y: auto; background: var(--ground); color: var(--on-ground);
+  display: flex; flex-direction: column; padding: 14px 16px calc(env(safe-area-inset-bottom, 0px) + 20px);
+}
+body.voice-open{ overflow: hidden; }
+.voice-top{ width: 100%; max-width: 480px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+.voice-listen, .voice-ask{ width: 100%; max-width: 480px; margin: auto; padding: 16px 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.voice-danno{ width: 78px; height: auto; }
+.voice-guess{
+  min-height: 2.6em; margin: 14px 0 26px; font-size: 34px; line-height: 1.25; font-weight: 700; color: var(--on-ground); overflow-wrap: anywhere; text-wrap: balance;
+}
+.voice-guess.empty{ font-size: 18px; font-weight: 500; color: var(--on-ground-dim); }
+.voice-guess.small{ min-height: 0; font-size: 18px; line-height: 1.4; font-weight: 600; }
+.guess-new{ display: inline-block; animation: guessIn .22s var(--ease-out); white-space: pre-wrap; }
+@keyframes guessIn{ from{ opacity: 0; transform: translateY(10px) scale(.92); } }
+.voice-note{ margin: 18px 0 0; font-size: 12px; line-height: 1.4; color: var(--on-ground-dim); }
+
+.voice-question{ margin: 10px 0 12px; font-size: 18px; font-weight: 700; color: var(--on-ground); }
+.voice-card{
+  position: relative; width: 100%; box-sizing: border-box; padding: 24px 18px; border-radius: 24px;
+  background: var(--card); color: var(--ink); box-shadow: 0 5px 0 rgba(4,30,90,.2);
+}
+.voice-card.confirmed{ outline: 3px solid var(--gold); }
+.voice-korean{ margin: 0; font-size: 40px; line-height: 1.2; font-weight: 900; font-family: 'Noto Sans KR', 'Inter', sans-serif; overflow-wrap: anywhere; }
+.voice-rom{ margin: 6px 0 0; font-size: 15px; color: var(--muted); }
+.voice-meaning{ margin: 8px 0 0; font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+.voice-check{
+  position: absolute; top: 10px; right: 12px; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--gold); color: var(--gold-ink); transform: rotate(-8deg);
+}
+.voice-check svg{ width: 24px; height: 24px; }
+.voice-dots{ display: inline-flex; gap: 8px; align-items: center; height: 48px; }
+.voice-dots i{ width: 12px; height: 12px; border-radius: 50%; background: var(--dot-on); animation: voiceDot 1s ease-in-out infinite; }
+.voice-dots i:nth-child(2){ animation-delay: .15s; }
+.voice-dots i:nth-child(3){ animation-delay: .3s; }
+@keyframes voiceDot{ 0%, 100%{ transform: translateY(0); opacity: .4; } 50%{ transform: translateY(-8px); opacity: 1; } }
+.voice-heard{ margin: 14px 0 0; font-size: 14px; color: var(--on-ground-dim); overflow-wrap: anywhere; }
+.voice-others{ margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: var(--on-ground-dim); }
+.voice-chip{ min-height: 40px; padding: 4px 14px; border: 0; border-radius: 20px; background: var(--chip); color: var(--on-ground); font-size: 15px; font-weight: 600; cursor: pointer; }
+.voice-actions{ width: 100%; margin-top: 22px; }
+.voice-yes{ width: 100%; min-height: 60px; font-size: 18px; }
+.voice-secondary{ margin-top: 6px; display: flex; justify-content: center; gap: 8px; }
+.voice-field{ display: block; text-align: left; }
+.voice-field + .voice-field{ margin-top: 12px; }
+.voice-field span{ display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.voice-field input{ width: 100%; box-sizing: border-box; height: 48px; padding: 0 12px; border: 2px solid transparent; border-radius: 12px; background: var(--field); color: var(--ink); font: inherit; font-size: 18px; font-weight: 600; outline: none; }
+.voice-field input:focus{ border-color: var(--dot-on); }
+
+.entry-flying{ position: fixed; z-index: 43; margin: 0; pointer-events: none; box-sizing: border-box; }
+.entry.just-added{ outline: 3px solid var(--gold); outline-offset: 0; transition: outline-color .9s ease; }
+.voice-others{ flex-direction: column; }
+.voice-other-row{ display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.voice-actions.gone{ visibility: hidden; }
+
+/* ---------- the word log's main action: one mic, two quiet helpers beside it (voice.js) ---------- */
+/* Laid out like a camera's shutter. Nothing here moves until you touch it. */
+.voice-hero{ position: relative; z-index: 0; margin: 34px 0 18px; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.voice-hero[hidden], .voice-sheet[hidden]{ display: none; }
+.voice-dock{ width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 26px; }
+.voice-dock > :first-child{ justify-self: end; }
+.voice-dock > :last-child{ justify-self: start; }
+
+.voice-mic{
+  --mic-wall: 7px;
+  position: relative; isolation: isolate; width: 116px; height: 116px; margin-bottom: var(--mic-wall); padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; color: var(--gold-ink);
+  background: radial-gradient(circle at 50% 28%, #FFD678, var(--gold) 68%);
+  box-shadow: 0 var(--mic-wall) 0 var(--gold-edge), 0 16px 26px -6px rgba(0,0,0,.28);
+  transition-property: transform, box-shadow;
+  transition-duration: .1s;
+  transition-timing-function: ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+/* on the listening screen a still ring gives the mic its space; on the log, the arch does */
+.voice-sheet .voice-mic::before{
+  content: ''; position: absolute; z-index: -1; inset: -11px -11px calc(-11px - var(--mic-wall)); border-radius: 50%; background: var(--chip);
+  transition: transform .2s cubic-bezier(.2,0,0,1);
+}
+.voice-mic svg{ display: block; }
+.voice-mic:active{ transform: translateY(var(--mic-wall)); box-shadow: 0 0 0 var(--gold-edge), 0 6px 12px -4px rgba(0,0,0,.28); }
+.voice-sheet .voice-mic:active::before{ transform: translateY(calc(var(--mic-wall) * -1)) scale(.97); }
+.voice-mic:focus-visible{ outline: 3px solid var(--on-ground); outline-offset: 14px; }
+@media (hover: hover){ .voice-sheet .voice-mic:hover::before{ transform: scale(1.05); } }
+
+.voice-side{
+  width: 52px; height: 52px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; background: var(--chip); color: var(--on-ground);
+  transition-property: transform, background-color, color;
+  transition-duration: .16s;
+  transition-timing-function: ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+.voice-side:active{ transform: scale(.96); }
+.voice-side:focus-visible{ outline: 3px solid var(--on-ground); outline-offset: 3px; }
+.voice-side[aria-expanded="true"]{ background: var(--tab-on); color: var(--tab-on-ink); }
+.voice-side-glyph{ display: block; font-size: 17px; line-height: 1; font-weight: 700; }
+.voice-side-glyph:lang(ko){ font-family: 'Noto Sans KR', 'Inter', sans-serif; font-size: 20px; }
+.voice-title{ margin: 0; font-size: 16px; line-height: 1.3; font-weight: 600; color: var(--on-ground); text-align: center; text-wrap: balance; }
+
+/* typing stays out of the way until you ask for it */
+.type-reveal{ display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .26s cubic-bezier(.2,0,0,1), visibility 0s linear .26s; }
+.type-reveal.open{ grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows .26s cubic-bezier(.2,0,0,1), visibility 0s; }
+.type-reveal-inner{ min-height: 0; overflow: hidden; }
+.type-reveal.open .type-reveal-inner{ animation: typeIn .26s cubic-bezier(.2,0,0,1); }
+@keyframes typeIn{ from{ opacity: 0; transform: translateY(-6px); } }
+.type-reveal-inner .field-row{ margin-bottom: 2px; }
+
+@media (max-width: 359px){
+  .voice-hero{ margin: 30px 0 14px; gap: 18px; }
+  .voice-dock{ column-gap: 18px; }
+  .voice-mic{ width: 100px; height: 100px; }
+}
+#searchInput::placeholder{ color: var(--on-ground); opacity: .88; }
+
+/* the line that comes in from each side, rises behind the mic and goes back down, tying the
+   mic to everything under it. The tint fades out, so the surface never ends in a hard edge. */
+.voice-arch{
+  --arch-scale: 1; --mic-center: 58px;
+  position: absolute; z-index: -1; left: calc(50% - 50vw); top: calc(var(--mic-center) - 100px); width: 100vw; height: 340px; overflow: hidden; pointer-events: none;
+}
+.voice-arch svg{ position: absolute; left: 50%; top: 0; margin-left: -1200px; transform: scale(var(--arch-scale)); transform-origin: 1200px 100px; }
+.arch-line{ fill: none; stroke: var(--on-ground); stroke-opacity: .38; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.arch-stop-top{ stop-color: var(--on-ground); stop-opacity: .13; }
+.arch-stop-end{ stop-color: var(--on-ground); stop-opacity: 0; }
+.voice-dock, .voice-title{ position: relative; }
+.type-reveal, #statusHint, #categoryChips, .search-row{ position: relative; z-index: 1; }
+@media (max-width: 359px){
+  .voice-arch{ --arch-scale: .862; --mic-center: 50px; }
+}

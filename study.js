@@ -18,15 +18,15 @@ const CORRECT_OPTION = 0;
 const COURSES = (window.STUDY_COURSES || []).map(course => ({
   ...course,
   lessons: (window.STUDY_LESSONS || {})[course.id] || [],
-  items: course.questions.map(([id, obj, text, options, why]) => ({
-    key: `${course.id}:${id}`, unitId: id.split('-')[0], obj, text, options, why
+  items: course.questions.map(([id, obj, text, options, why, source]) => ({
+    key: `${course.id}:${id}`, unitId: id.split('-')[0], obj, text, options, why, source
   }))
 }));
 const ITEM_BY_KEY = new Map();
 COURSES.forEach(course => course.items.forEach(item => ITEM_BY_KEY.set(item.key, item)));
 
 function loadStudy(){
-  const empty = { progress: {}, mocks: {}, active: null, reported: [], lessons: {}, streak: { count: 0, lastDate: null }, world: 'words' };
+  const empty = { progress: {}, mocks: {}, active: null, reported: [], lessons: {}, responses: {}, drafts: {}, unitFocus: {}, streak: { count: 0, lastDate: null }, world: 'words' };
   try{
     return { ...empty, ...JSON.parse(localStorage.getItem(STUDY_KEY)) };
   }catch(e){
@@ -37,10 +37,10 @@ let study = loadStudy();
 function saveStudy(){ localStorage.setItem(STUDY_KEY, JSON.stringify(study)); }
 
 /* ---------- backup (called from app.js) ---------- */
-function studyHasData(){ return Object.keys(study.lessons).length > 0 || Object.keys(study.progress).length > 0 || Object.keys(study.mocks).length > 0; }
+function studyHasData(){ return Object.keys(study.lessons).length > 0 || Object.keys(study.progress).length > 0 || Object.keys(study.mocks).length > 0 || Object.keys(study.responses).length > 0; }
 function studyBackupData(){
-  const { progress, mocks, reported, lessons, streak } = study; // an attempt in progress isn't worth restoring
-  return { progress, mocks, reported, lessons, streak };
+  const { progress, mocks, reported, lessons, responses, streak } = study; // an attempt in progress isn't worth restoring
+  return { progress, mocks, reported, lessons, responses, streak };
 }
 // keeps whichever answer is newest per question, and every mock from both sides
 function mergeStudyBackup(incoming){
@@ -56,6 +56,11 @@ function mergeStudyBackup(incoming){
   });
   study.reported = [...new Set([...study.reported, ...(incoming.reported || [])])];
   study.lessons = { ...(incoming.lessons || {}), ...study.lessons };
+  Object.entries(incoming.responses || {}).forEach(([id, list]) => {
+    const mine = study.responses[id] || [];
+    const seen = new Set(mine.map(attempt => attempt.at));
+    study.responses[id] = mine.concat(list.filter(attempt => !seen.has(attempt.at))).sort((a, b) => a.at - b.at);
+  });
   if(incoming.streak && (incoming.streak.lastDate || '') > (study.streak.lastDate || '')) study.streak = incoming.streak;
   saveStudy();
   if(!studyView.hidden) renderStudy();
@@ -85,14 +90,16 @@ function unitStats(course, unitId){
   return { total: items.length, right, pct: items.length ? right / items.length : 0 };
 }
 // the share of the bank you got right last time, counted the way the test weights each unit
-function readiness(course){
-  const totalWeight = course.units.reduce((sum, u) => sum + u.weight, 0);
-  return course.units.reduce((sum, u) => sum + u.weight * unitStats(course, u.id).pct, 0) / totalWeight;
+function readiness(course, unitId){
+  // a course can list units that aren't built yet, and those can't count against you
+  const units = course.units.filter(u => (unitId ? u.id === unitId : unitStats(course, u.id).total > 0));
+  const totalWeight = units.reduce((sum, u) => sum + u.weight, 0);
+  return totalWeight ? units.reduce((sum, u) => sum + u.weight * unitStats(course, u.id).pct, 0) / totalWeight : 0;
 }
-function reviewQueue(course){
+function reviewQueue(course, unitId){
   const now = Date.now();
   return course.items
-    .filter(i => study.progress[i.key] && study.progress[i.key].dueAt <= now)
+    .filter(i => (!unitId || i.unitId === unitId) && study.progress[i.key] && study.progress[i.key].dueAt <= now)
     .sort((a, b) => study.progress[a.key].box - study.progress[b.key].box);
 }
 function weakestUnit(course){
@@ -114,8 +121,8 @@ function shuffled(list){
 const quizItem = (item) => ({ key: item.key, order: shuffled([0, 1, 2, 3]) });
 
 // due first, then questions you haven't seen, then whatever comes back soonest
-function pickPractice(course, unitId){
-  const pool = unitId ? course.items.filter(i => i.unitId === unitId) : course.items;
+function pickPractice(course, unitId, obj){
+  const pool = course.items.filter(i => (!unitId || i.unitId === unitId) && (!obj || i.obj === obj));
   const now = Date.now();
   const state = i => study.progress[i.key];
   const due = pool.filter(i => state(i) && state(i).dueAt <= now).sort((a, b) => state(a).box - state(b).box);
@@ -139,6 +146,33 @@ function pickExam(course, size){
       .sort((a, b) => lastSeen(a) - lastSeen(b))
       .slice(0, s.count)
   ));
+}
+// a unit test keeps questions on the same source together, like the sets on the real exam,
+// and starts with whatever you've seen least recently
+function pickUnitTest(course, unitId, size){
+  const lastSeen = i => (study.progress[i.key] || {}).at || 0;
+  const groups = new Map();
+  shuffled(course.items.filter(i => i.unitId === unitId)).forEach(item => {
+    const key = item.source || item.key;
+    if(!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  });
+  const staleness = group => Math.max(...group.map(lastSeen));
+  const chosen = [];
+  let count = 0;
+  [...groups.values()].sort((a, b) => staleness(a) - staleness(b)).forEach(group => {
+    if(count + group.length > size) return;
+    chosen.push(group);
+    count += group.length;
+  });
+  // whatever didn't fit can still top the test up to its exact length, one question at a time
+  const used = new Set(chosen.flat());
+  course.items.filter(i => i.unitId === unitId && !used.has(i)).sort((a, b) => lastSeen(a) - lastSeen(b)).forEach(item => {
+    if(count >= size) return;
+    chosen.push([item]);
+    count++;
+  });
+  return shuffled(chosen).flat();
 }
 
 /* ---------- view state ---------- */
@@ -173,19 +207,22 @@ function renderStudy(){
     if(quiz === study.active) quiz = null;
     finishExam(true);
   }
-  appEl.classList.toggle('in-session', !!quiz || !!lesson || studyScreen.name === 'results');
+  appEl.classList.toggle('in-session', !!quiz || !!lesson || !!cardRun || !!writer || studyScreen.name === 'results');
   if(lesson){ stopClock(); renderLesson(); return; }
   if(quiz){ renderQuiz(); return; }
+  if(cardRun){ stopClock(); streakBar.set(0); renderCardRun(); return; }
+  if(writer){ stopClock(); streakBar.set(0); renderWriter(); return; }
   stopClock();
   streakBar.set(0);
   if(studyScreen.name === 'results') renderResults();
   else if(studyScreen.name === 'course') renderCourse(courseById(studyScreen.courseId));
   else renderHome();
 }
-function showScreen(next){
+function showScreen(next, fx){
   studyScreen = next;
   renderStudy();
   scrollTo(0, 0);
+  if(fx) screenFx(fx);
 }
 
 /* ---------- home ---------- */
@@ -233,25 +270,27 @@ const PATH_ICON = {
 const PRACTICE_CLEARED = .7; // a unit's practice stop counts as cleared at this share of its bank
 
 // the path is built from data: each unit's lessons, then a practice stop, then the final mock
-function pathStops(course){
+function pathStops(course, onlyUnit){
   const stops = [];
-  course.units.forEach(unit => {
-    stops.push({ kind: 'unit', unit });
-    lessonsOf(course).filter(l => l.unit === unit.id).forEach(def => {
+  (onlyUnit ? [onlyUnit] : course.units).forEach(unit => {
+    if(!onlyUnit) stops.push({ kind: 'unit', unit }); // inside a unit, the page heading already says which
+    lessonsOf(course).filter(l => l.unit === unit.id && !l.track).forEach(def => {
       stops.push({ kind: 'lesson', unit, def, title: def.title, done: !!(study.lessons[def.id] && study.lessons[def.id].done) });
     });
     const stats = unitStats(course, unit.id);
     stops.push({ kind: 'practice', unit, title: `Practice: ${stats.right}/${stats.total}`, done: stats.pct >= PRACTICE_CLEARED });
   });
-  stops.push({ kind: 'exam', title: 'Full mock test', done: (study.mocks[course.id] || []).length > 0 });
+  stops.push(onlyUnit
+    ? { kind: 'exam', title: 'Unit test', done: (study.mocks[course.id] || []).some(m => m.unitId === onlyUnit.id) }
+    : { kind: 'exam', title: 'Full mock test', done: (study.mocks[course.id] || []).length > 0 });
   return stops;
 }
-function renderPath(course){
-  const stops = pathStops(course);
+function renderPath(course, onlyUnit){
+  const stops = pathStops(course, onlyUnit);
   // sweeps out to one side and back through the middle, then out to the other
   const SWAY = [50, 68, 80, 68, 50, 32, 20, 32];
   const STEP = 124, BANNER = 112, NODE_MID = 35;
-  let y = 8, index = 0;
+  let y = onlyUnit ? 40 : 8, index = 0; // with no banner above, leave room for Danno under the tabs
   const placed = stops.map(stop => {
     if(stop.kind === 'unit'){ const at = y; y += BANNER; return { ...stop, y: at }; }
     const at = { ...stop, y, x: SWAY[index++ % SWAY.length] };
@@ -273,7 +312,7 @@ function renderPath(course){
     if(stop.kind === 'unit'){
       return `<div class="path-unit" style="top:${stop.y}px">
         <b>${escapeHtml(stop.unit.title)}</b>
-        <span>${plural(stop.unit.weight, 'question')} on the test</span>
+        <span>${stop.unit.share ? `${escapeHtml(stop.unit.share)} of the exam` : `${plural(stop.unit.weight, 'question')} on the test`}</span>
       </div>`;
     }
     const isCurrent = stop === current;
@@ -300,8 +339,8 @@ function renderPath(course){
     ${html}
   </div>`;
 }
-function renderPracticeTab(course){
-  const due = reviewQueue(course).length;
+function renderPracticeTab(course, onlyUnit){
+  const due = reviewQueue(course, onlyUnit && onlyUnit.id).length;
   const locked = study.active && study.active.courseId === course.id;
   const reported = study.reported.filter(key => key.startsWith(course.id + ':'));
   return `
@@ -310,7 +349,14 @@ function renderPracticeTab(course){
       <button class="study-btn wide" type="button" data-act="practice-any" data-course="${escapeHtml(course.id)}"${locked ? ' disabled' : ''}><b>smart practice</b><span>what you need most, 10 questions</span></button>
     </div>
     <div class="study-card unit-list">
-      ${course.units.map(unit => {
+      ${onlyUnit ? onlyUnit.objectives.map((name, index) => {
+        const items = course.items.filter(i => i.unitId === onlyUnit.id && i.obj === index + 1);
+        const right = items.filter(i => (study.progress[i.key] || {}).last === 'r').length;
+        return `<button class="unit-row" type="button" data-act="practice-topic" data-course="${escapeHtml(course.id)}" data-unit="${escapeHtml(onlyUnit.id)}" data-obj="${index + 1}"${locked ? ' disabled' : ''}>
+          <span class="unit-top"><span class="unit-name">${escapeHtml(name)}</span><span class="unit-count">${right}/${items.length}</span></span>
+          ${meter(items.length ? right / items.length : 0)}
+        </button>`;
+      }).join('') : course.units.map(unit => {
         const stats = unitStats(course, unit.id);
         return `<button class="unit-row" type="button" data-act="practice-unit" data-course="${escapeHtml(course.id)}" data-unit="${escapeHtml(unit.id)}"${locked ? ' disabled' : ''}>
           <span class="unit-top"><span class="unit-name">${escapeHtml(unit.title)}</span><span class="unit-count">${stats.right}/${stats.total}</span></span>
@@ -353,25 +399,37 @@ function renderTestTab(course){
           return `<div class="score-bar"><span>${value}</span><i style="height:${Math.max(value, 4)}%"></i></div>`;
         }).join('')}</div>
       </div>` : ''}
-    <p class="study-disclaimer">Original practice questions written from FBLA's published objectives. They are not real test questions, and your score here doesn't predict your result.</p>`;
+    <p class="study-disclaimer">${escapeHtml(course.disclaimer || 'Original practice questions written from FBLA’s published objectives. They are not real test questions, and your score here doesn’t predict your result.')}</p>`;
 }
 function renderCourse(course){
+  const unit = focusedUnit(course);
+  if(course.unitPicker && !unit){ renderUnitPicker(course); return; }
   const tab = studyScreen.tab || 'learn';
-  const tabs = [['learn', 'learn'], ['practice', 'practice'], ['test', 'test']];
+  const tabs = unit
+    ? [['learn', 'learn'], ['cards', 'cards'], ['practice', 'practice'], ['write', 'write'], ['test', 'test']]
+    : [['learn', 'learn'], ['practice', 'practice'], ['test', 'test']];
+  const body = {
+    learn: () => renderPath(course, unit),
+    cards: () => renderCardsTab(course, unit),
+    practice: () => renderPracticeTab(course, unit),
+    write: () => renderWriteTab(course, unit),
+    test: () => (unit ? renderUnitTestTab(course, unit) : renderTestTab(course))
+  };
   studyView.innerHTML = `
     <div class="study-screen">
       <div class="course-top">
-        <button class="study-back" type="button" data-act="home" aria-label="all courses">${ICON.back}</button>
+        <button class="study-back" type="button" data-act="${unit ? 'units' : 'home'}" data-course="${escapeHtml(course.id)}" aria-label="${unit ? 'all units' : 'all courses'}">${ICON.back}</button>
         <div class="course-top-text">
-          <p class="course-org on-ground">${escapeHtml(course.org)}</p>
-          <h2 class="course-heading on-ground">${escapeHtml(course.title)}</h2>
+          <p class="course-org on-ground">${escapeHtml(unit ? course.title : course.org)}</p>
+          <h2 class="course-heading on-ground">${escapeHtml(unit ? unit.title : course.title)}</h2>
         </div>
         ${statChips()}
       </div>
-      <nav class="course-tabs" aria-label="course sections">
+      <nav class="course-tabs${unit ? ' five' : ''}" aria-label="course sections">
+        <i class="tab-thumb" aria-hidden="true" style="--n:${tabs.length};--i:${tabs.findIndex(([id]) => id === tab)}"></i>
         ${tabs.map(([id, label]) => `<button class="course-tab${id === tab ? ' active' : ''}" type="button" data-act="set-tab" data-tab="${id}"${id === tab ? ' aria-current="page"' : ''}>${label}</button>`).join('')}
       </nav>
-      ${tab === 'learn' ? renderPath(course) : tab === 'practice' ? renderPracticeTab(course) : renderTestTab(course)}
+      <div class="tab-body">${body[tab]()}</div>
     </div>`;
   if(tab === 'learn') afterPathRender();
 }
@@ -386,12 +444,12 @@ function startPractice(course, items){
   renderStudy();
   scrollTo(0, 0);
 }
-function startExam(course, size){
-  const items = pickExam(course, size);
+function startExam(course, size, unitId){
+  const items = unitId ? pickUnitTest(course, unitId, size) : pickExam(course, size);
   if(!items.length){ showToast('nothing to practice here yet'); return; }
   const now = Date.now();
   study.active = {
-    mode: 'exam', courseId: course.id, items: items.map(quizItem), i: 0,
+    mode: 'exam', courseId: course.id, unitId: unitId || null, items: items.map(quizItem), i: 0,
     answers: {}, flags: {}, startedAt: now,
     endsAt: now + items.length * secsPerQuestion(course) * 1000
   };
@@ -463,8 +521,9 @@ function renderQuiz(){
         ${isExam ? '<span class="quiz-clock" id="examClock" role="timer"></span>' : `<span class="train-progress-text">${quiz.i + 1}/${quiz.items.length}</span>`}
       </div>
       ${isExam ? `<p class="quiz-pace"><span>question ${quiz.i + 1} of ${quiz.items.length}</span><span id="examPace"></span></p>` : ''}
-      <div class="quiz-card${quiz.fresh !== false ? ' enter' : ''}" tabindex="-1">
-        <p class="quiz-tag">${escapeHtml(unit.title)} · ${escapeHtml(unit.objectives[item.obj - 1])}</p>
+      <div class="quiz-card${quiz.fresh !== false ? ` enter${quiz.movingBack ? ' back' : ''}` : ''}" tabindex="-1">
+        <p class="quiz-tag">${course.unitPicker ? '' : `${escapeHtml(unit.title)} · `}${escapeHtml(unit.objectives[item.obj - 1])}</p>
+        ${item.source ? renderSource(course, item.source) : ''}
         <h3 class="quiz-question">${escapeHtml(item.text)}</h3>
         <div class="quiz-options">${options}</div>
       </div>
@@ -564,7 +623,7 @@ function finishExam(timedOut){
     unitsSummary[unitId].total++;
     if(row.right) unitsSummary[unitId].right++;
   });
-  (study.mocks[course.id] = study.mocks[course.id] || []).push({ at: Date.now(), score, total: rows.length, secs, units: unitsSummary });
+  (study.mocks[course.id] = study.mocks[course.id] || []).push({ at: Date.now(), score, total: rows.length, secs, units: unitsSummary, unitId: exam.unitId || null });
   study.active = null;
   saveStudy();
   stopClock();
@@ -601,6 +660,14 @@ function renderResults(){
   });
   const weakest = [...unitRows].sort((a, b) => a.share - b.share)[0];
   const mood = resultMood(percent);
+  // inside one unit, the useful breakdown is by topic
+  const focus = focusedUnit(course);
+  const breakdown = focus
+    ? focus.objectives.map((name, index) => {
+        const rows = result.rows.filter(row => ITEM_BY_KEY.get(row.key).obj === index + 1);
+        return { name, right: rows.filter(row => row.right).length, total: rows.length };
+      }).filter(row => row.total)
+    : unitRows.map(row => ({ name: row.unit.title, right: row.right, total: row.total }));
 
   studyView.innerHTML = `
     <div class="study-screen">
@@ -610,12 +677,12 @@ function renderResults(){
         <p class="results-score">${percent}%</p>
         <p class="results-sub">${result.score} of ${result.total} right${result.secs ? ` in ${clockText(result.secs)}` : ''}</p>
         <p class="results-line">${escapeHtml(mood.line)}</p>
-        ${weakest && weakest.share < 1 ? `<p class="results-next">work on next: <b>${escapeHtml(weakest.unit.title)}</b></p>` : ''}
+        ${weakest && weakest.share < 1 && !focus ? `<p class="results-next">work on next: <b>${escapeHtml(weakest.unit.title)}</b></p>` : ''}
       </div>
       <div class="study-card unit-list">
-        ${unitRows.map(row => `<div class="unit-row static">
-          <span class="unit-top"><span class="unit-name">${escapeHtml(row.unit.title)}</span><span class="unit-count">${row.right}/${row.total}</span></span>
-          ${meter(row.share)}
+        ${breakdown.map(row => `<div class="unit-row static">
+          <span class="unit-top"><span class="unit-name">${escapeHtml(row.name)}</span><span class="unit-count">${row.right}/${row.total}</span></span>
+          ${meter(row.right / row.total)}
         </div>`).join('')}
       </div>
       ${missed.length ? `
@@ -625,6 +692,7 @@ function renderResults(){
             const item = ITEM_BY_KEY.get(row.key);
             return `<details class="study-card review-item">
               <summary>${escapeHtml(item.text)}</summary>
+              ${item.source ? renderSource(course, item.source) : ''}
               ${row.answer !== undefined ? `<p class="review-yours">${ICON.cross}<span>you chose: ${escapeHtml(item.options[row.answer])}</span></p>` : '<p class="review-yours">left blank</p>'}
               <p class="review-right">${ICON.check}<span>${escapeHtml(item.options[CORRECT_OPTION])}</span></p>
               <p class="feedback-why">${escapeHtml(item.why)}</p>
@@ -632,8 +700,10 @@ function renderResults(){
           }).join('')}
         </div>` : ''}
       <div class="summary-actions">
-        <button class="summary-back" type="button" data-act="open-course" data-course="${escapeHtml(course.id)}">back to course</button>
-        ${weakest && weakest.share < 1
+        <button class="summary-back" type="button" data-act="open-course" data-course="${escapeHtml(course.id)}">${focus ? 'back to unit' : 'back to course'}</button>
+        ${focus
+          ? `<button class="summary-again" type="button" data-act="practice-any" data-course="${escapeHtml(course.id)}">keep practicing</button>`
+          : weakest && weakest.share < 1
           ? `<button class="summary-again" type="button" data-act="practice-unit" data-course="${escapeHtml(course.id)}" data-unit="${escapeHtml(weakest.unit.id)}">practice ${escapeHtml(weakest.unit.title)}</button>`
           : `<button class="summary-again" type="button" data-act="practice-any" data-course="${escapeHtml(course.id)}">keep practicing</button>`}
       </div>
@@ -651,6 +721,7 @@ function choose(option){
     quiz.answers[current.key] = option;
     saveStudy();
     renderQuiz();
+    popEl(studyView.querySelector('.quiz-option.is-selected'), 1.03); // says it registered, not whether it's right
     return;
   }
   if(quiz.picked !== null) return; // one answer per question, by mouse, touch or keyboard
@@ -673,6 +744,7 @@ function choose(option){
   renderQuiz();
 }
 function goTo(index){
+  quiz.movingBack = index < quiz.i;
   quiz.i = Math.max(0, Math.min(index, quiz.items.length - 1));
   quiz.fresh = true;
   if(quiz.mode === 'exam') saveStudy();
@@ -701,22 +773,45 @@ function toggleFlag(){
   else quiz.flags[key] = true;
   saveStudy();
   renderQuiz();
+  popEl(studyView.querySelector('.flag-btn'), 1.1);
 }
 
 studyView.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
   if(!el || el.disabled) return;
   if(el.dataset.act.startsWith('l-')){ lessonAction(el); return; }
+  if(el.dataset.act.startsWith('ap-')){ apAction(el); return; }
   const course = el.dataset.course ? courseById(el.dataset.course) : null;
   switch(el.dataset.act){
-    case 'home': study.lastCourse = null; saveStudy(); showScreen({ name: 'home' }); break;
-    case 'open-course': study.lastCourse = course.id; saveStudy(); showScreen({ name: 'course', courseId: course.id }); break;
-    case 'set-tab': studyScreen = { ...studyScreen, tab: el.dataset.tab }; renderStudy(); scrollTo(0, 0); break;
+    case 'home': study.lastCourse = null; saveStudy(); showScreen({ name: 'home' }, 'back'); break;
+    case 'units': delete study.unitFocus[course.id]; saveStudy(); showScreen({ name: 'course', courseId: course.id }, 'back'); break;
+    case 'open-unit': study.unitFocus[course.id] = el.dataset.unit; saveStudy(); showScreen({ name: 'course', courseId: course.id }, 'forward'); break;
+    case 'practice-topic': studyScreen = { name: 'course', courseId: course.id, tab: 'practice' }; startPractice(course, pickPractice(course, el.dataset.unit, Number(el.dataset.obj))); break;
+    case 'open-course': study.lastCourse = course.id; saveStudy(); showScreen({ name: 'course', courseId: course.id }, 'forward'); break;
+    case 'set-tab': {
+      const oldThumb = studyView.querySelector('.tab-thumb');
+      const from = oldThumb ? Number(oldThumb.style.getPropertyValue('--i')) : 0;
+      studyScreen = { ...studyScreen, tab: el.dataset.tab };
+      renderStudy();
+      scrollTo(0, 0);
+      const newThumb = studyView.querySelector('.tab-thumb');
+      screenFx('tab', { from, to: newThumb ? Number(newThumb.style.getPropertyValue('--i')) : 0 });
+      break;
+    }
     case 'start-lesson': startLesson(course, course.lessons.find(l => l.id === el.dataset.lesson)); break;
     case 'practice-unit': studyScreen = { name: 'course', courseId: course.id, tab: studyScreen.tab || 'learn' }; startPractice(course, pickPractice(course, el.dataset.unit)); break;
-    case 'practice-any': studyScreen = { name: 'course', courseId: course.id }; startPractice(course, pickPractice(course)); break;
-    case 'practice-review': startPractice(course, reviewQueue(course).slice(0, PRACTICE_SIZE)); break;
-    case 'start-exam': studyScreen = { name: 'course', courseId: course.id, tab: 'test' }; startExam(course, Number(el.dataset.size)); break;
+    case 'practice-any': {
+      const focus = focusedUnit(course);
+      studyScreen = { name: 'course', courseId: course.id, tab: focus ? 'practice' : undefined };
+      startPractice(course, pickPractice(course, focus && focus.id));
+      break;
+    }
+    case 'practice-review': {
+      const focus = focusedUnit(course);
+      startPractice(course, reviewQueue(course, focus && focus.id).slice(0, PRACTICE_SIZE));
+      break;
+    }
+    case 'start-exam': studyScreen = { name: 'course', courseId: course.id, tab: 'test' }; startExam(course, Number(el.dataset.size), el.dataset.unit); break;
     case 'resume-exam': quiz = study.active; quiz.confirming = false; renderStudy(); scrollTo(0, 0); break;
     case 'discard-exam': study.active = null; saveStudy(); renderStudy(); showToast('attempt discarded'); break;
     case 'choose': choose(Number(el.dataset.option)); break;
@@ -724,8 +819,8 @@ studyView.addEventListener('click', (e) => {
     case 'prev': goTo(quiz.i - 1); break;
     case 'goto': goTo(Number(el.dataset.index)); break;
     case 'flag': toggleFlag(); break;
-    case 'toggle-grid': quiz.showGrid = !quiz.showGrid; renderQuiz(); break;
-    case 'ask-submit': quiz.confirming = true; renderQuiz(); break;
+    case 'toggle-grid': quiz.showGrid = !quiz.showGrid; renderQuiz(); slideIn(studyView.querySelector('.quiz-grid'), 0); break;
+    case 'ask-submit': quiz.confirming = true; renderQuiz(); slideIn(studyView.querySelector('.quiz-confirm'), 0); break;
     case 'cancel-submit': quiz.confirming = false; renderQuiz(); break;
     case 'submit': finishExam(false); renderStudy(); scrollTo(0, 0); break;
     case 'report': {
@@ -733,20 +828,21 @@ studyView.addEventListener('click', (e) => {
       study.reported = study.reported.includes(key) ? study.reported.filter(k => k !== key) : [...study.reported, key];
       saveStudy();
       renderQuiz();
+      popEl(studyView.querySelector('.report-btn'), 1.12);
       break;
     }
     case 'leave':
       if(quiz.mode === 'exam'){
         const { courseId } = quiz;
         quiz = null;
-        showScreen({ name: 'course', courseId });
+        showScreen({ name: 'course', courseId }, 'back');
         showToast('the clock keeps running, like the real test');
       }else if(Object.keys(quiz.firstTry).length){
         finishPractice();
       }else{
         const { courseId } = quiz;
         quiz = null;
-        showScreen({ name: 'course', courseId });
+        showScreen({ name: 'course', courseId }, 'back');
       }
       break;
   }
@@ -777,14 +873,18 @@ document.addEventListener('keydown', (e) => {
 /* ---------- moving between the word log and study ---------- */
 const WORLD_COLORS = { words: '#0A47B8', study: '#0E5A4A' };
 const worldSwitch = document.getElementById('worldSwitch');
-function syncWorld(world){
-  document.documentElement.classList.toggle('world-study', world === 'study');
-  document.querySelector('meta[name="theme-color"]').content = WORLD_COLORS[world];
+function syncSwitch(world){
+  worldSwitch.dataset.world = world;
   worldSwitch.querySelectorAll('button').forEach(btn => {
     const on = btn.dataset.world === world;
     btn.classList.toggle('active', on);
     btn.setAttribute('aria-pressed', String(on));
   });
+}
+function syncWorld(world){
+  document.documentElement.classList.toggle('world-study', world === 'study');
+  document.querySelector('meta[name="theme-color"]').content = WORLD_COLORS[world];
+  syncSwitch(world);
 }
 function enterStudy(){
   study.world = 'study';
@@ -808,8 +908,6 @@ function openLastWorld(){
 }
 worldSwitch.addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-world]');
-  if(!btn) return;
-  if(btn.dataset.world === 'study') enterStudy();
-  else switchTab('log');
+  if(btn) changeWorld(btn.dataset.world, btn);
 });
 syncWorld('words');
