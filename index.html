@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="preload" href="fonts/TitanOne-Regular.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="stylesheet" href="styles.css?v=20261107n">
+<link rel="stylesheet" href="styles.css?v=20261107o">
 </head>
 <body>
 
@@ -316,11 +316,34 @@
 
     <div class="setting-block">
       <span class="setting-label">app</span>
+      <button class="setting-btn wide" id="installGuideBtn" type="button" hidden>add to home screen</button>
       <button class="setting-btn wide" id="refreshAppBtn" type="button">refresh for updates</button>
       <p class="setting-note">loads the newest version. your words stay on this device</p>
     </div>
 
     <button class="danger-link" id="clearAllBtn" type="button">delete all words</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="installOverlay" hidden>
+  <div class="modal-sheet install-sheet" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="modal-header">
+      <h2 id="installTitle">put 단어장 on your home screen</h2>
+      <button class="icon-btn" id="closeInstallBtn" type="button" aria-label="close">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <p class="setting-note">it opens full screen with its own icon, like a normal app</p>
+    <ol class="install-steps">
+      <li><span class="install-num">1</span><p>tap <b>share</b>
+        <svg class="install-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>
+        in safari. if you only see <b>⋯</b>, tap that first</p></li>
+      <li><span class="install-num">2</span><p>scroll down and tap <b>add to home screen</b></p></li>
+      <li><span class="install-num">3</span><p>keep <b>open as web app</b> on, then tap <b>add</b></p></li>
+    </ol>
+    <p class="setting-note">the home screen app keeps its own words. to bring these over, use <b>export backup</b> in settings here, then <b>restore backup</b> in the new app</p>
+    <button class="install-done" id="installDoneBtn" type="button">got it</button>
   </div>
 </div>
 
@@ -383,21 +406,22 @@
 <div class="foyer-wipe foyer-wipe-paper" id="wipePaper" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="app.js?v=20261107n"></script>
-<script src="foyer.js?v=20261107n"></script>
-<script src="courses/computer-problem-solving.js?v=20261107n"></script>
-<script src="courses/entrepreneurship.js?v=20261107n"></script>
-<script src="courses/lessons-cps.js?v=20261107n"></script>
-<script src="courses/lessons-ent.js?v=20261107n"></script>
-<script src="courses/ap-world.js?v=20261107n"></script>
-<script src="courses/lessons-apw.js?v=20261107n"></script>
-<script src="courses/ap-world-u4.js?v=20261107n"></script>
-<script src="study.js?v=20261107n"></script>
-<script src="study-lessons.js?v=20261107n"></script>
-<script src="study-streak.js?v=20261107n"></script>
-<script src="study-grading.js?v=20261107n"></script>
-<script src="study-ap.js?v=20261107n"></script>
-<script src="fx.js?v=20261107n"></script>
-<script src="voice.js?v=20261107n"></script>
+<script src="app.js?v=20261107o"></script>
+<script src="foyer.js?v=20261107o"></script>
+<script src="courses/computer-problem-solving.js?v=20261107o"></script>
+<script src="courses/entrepreneurship.js?v=20261107o"></script>
+<script src="courses/lessons-cps.js?v=20261107o"></script>
+<script src="courses/lessons-ent.js?v=20261107o"></script>
+<script src="courses/ap-world.js?v=20261107o"></script>
+<script src="courses/lessons-apw.js?v=20261107o"></script>
+<script src="courses/ap-world-u4.js?v=20261107o"></script>
+<script src="study.js?v=20261107o"></script>
+<script src="study-lessons.js?v=20261107o"></script>
+<script src="study-streak.js?v=20261107o"></script>
+<script src="study-grading.js?v=20261107o"></script>
+<script src="study-ap.js?v=20261107o"></script>
+<script src="fx.js?v=20261107o"></script>
+<script src="voice.js?v=20261107o"></script>
+<script src="install.js?v=20261107o"></script>
 </body>
 </html>
