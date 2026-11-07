@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261106a">
+<link rel="stylesheet" href="styles.css?v=20261106r">
 </head>
 <body>
 
@@ -29,6 +29,10 @@
     <button class="brand-home" id="brandHome" type="button" aria-label="back to the welcome screen">
       <img class="brand-logo" src="logo2.png" alt="단어장 word log">
     </button>
+    <div class="world-switch" id="worldSwitch" role="group" aria-label="choose what to work on">
+      <button type="button" data-world="words" class="active" aria-pressed="true">단어</button>
+      <button type="button" data-world="study" aria-pressed="false">study</button>
+    </div>
     <div class="topbar-actions">
       <div class="streak-btn" id="streakBtn" role="img" aria-label="streak">
         <svg class="streak-ring" viewBox="0 0 36 36" width="36" height="36" aria-hidden="true">
@@ -95,6 +99,8 @@
       </div>
     </main>
   </section>
+
+  <section id="studyView" hidden></section>
 
   <section id="trainView" hidden>
 
@@ -352,7 +358,14 @@
 <div class="foyer-wipe foyer-wipe-paper" id="wipePaper" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="app.js?v=20261106a"></script>
-<script src="foyer.js?v=20261106a"></script>
+<script src="app.js?v=20261106r"></script>
+<script src="foyer.js?v=20261106r"></script>
+<script src="courses/computer-problem-solving.js?v=20261106r"></script>
+<script src="courses/entrepreneurship.js?v=20261106r"></script>
+<script src="courses/lessons-cps.js?v=20261106r"></script>
+<script src="courses/lessons-ent.js?v=20261106r"></script>
+<script src="study.js?v=20261106r"></script>
+<script src="study-lessons.js?v=20261106r"></script>
+<script src="study-streak.js?v=20261106r"></script>
 </body>
 </html>

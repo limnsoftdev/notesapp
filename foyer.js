@@ -223,7 +223,7 @@ function wakeUp(){
       waking = false;
       const resumed = resumedFromAway;
       resumedFromAway = false;
-      closeFoyer(dannoWrap, () => { if(!resumed) switchTab('log'); });
+      closeFoyer(dannoWrap, () => { if(!resumed) openLastWorld(); });
     }, 1.85);
 }
 // coming back via the topbar logo: he's already awake, so just a quick entrance

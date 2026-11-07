@@ -732,12 +732,13 @@ const importBackupBtn = document.getElementById('importBackupBtn');
 const importFileInput = document.getElementById('importFileInput');
 
 exportBackupBtn.addEventListener('click', () => {
-  if(entries.length === 0){ showToast('nothing to back up yet'); return; }
+  if(entries.length === 0 && !studyHasData()){ showToast('nothing to back up yet'); return; }
   const payload = {
     app: 'koWordLog',
     version: 1,
     exportedAt: new Date().toISOString(),
-    entries
+    entries,
+    study: studyBackupData()
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
   const url = URL.createObjectURL(blob);
@@ -763,7 +764,9 @@ importFileInput.addEventListener('change', async (e) => {
     if(!Array.isArray(incoming)) throw new Error('bad format');
 
     const valid = incoming.filter(x => x && x.korean && x.id);
-    if(valid.length === 0) throw new Error('no valid entries');
+    if(valid.length === 0 && !data.study) throw new Error('no valid entries');
+    if(data.study) mergeStudyBackup(data.study);
+    if(valid.length === 0){ showToast('restored your study progress'); return; }
 
     const existingIds = new Set(entries.map(e => e.id));
     const merged = incoming.some(x => x.id && existingIds.has(x.id)) && entries.length > 0
@@ -930,6 +933,7 @@ const fadeReviewBtn = document.getElementById('fadeReviewBtn');
 
 function switchTab(tab){
   const isLog = tab === 'log';
+  leaveStudy();
   logView.hidden = !isLog;
   trainView.hidden = isLog;
   tabLogBtn.classList.toggle('active', isLog);
